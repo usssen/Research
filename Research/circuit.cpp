@@ -531,9 +531,8 @@ bool Vio_Check(PATH* pptr,int stn,int edn,AGINGTYPE ast, AGINGTYPE aed,int year)
 	//	DelayP += (pptr->Out_time(i) - pptr->In_time(i))*AgingRate(NORMAL,year);
 	DelayP += DelayP*AgingRate(NORMAL, year);
 	if (pptr->GetType() == LONG){
-		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period){
-			return true;
-		}		
+		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)	
+			return true;		
 		return false;
 	}
 	else{
@@ -578,7 +577,7 @@ bool Vio_Check(PATH* pptr, double year,double Aging_P){
 	double clkt = 0.0;
 	if (edptr->GetType() != "PO"){
 		clkt = pptr->GetCTE();
-		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
+		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();	//不含clock-source
 		for (int i = 2; i < edptr->Clock_Length(); i++)
 		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
 			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
@@ -608,9 +607,8 @@ bool Vio_Check(PATH* pptr, double year,double Aging_P){
 	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
 	DelayP += DelayP*Aging_P;
 	if (pptr->GetType() == LONG){
-		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period){
-			return true;
-		}
+		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)			
+			return true;		
 		return false;
 	}
 	else{
@@ -876,7 +874,7 @@ bool CallSatAndReadReport(){
 		else if (n1<0 && n2>0)
 			cbuffer_decode[(-n1 - 1) / 2]->SetDcc(DCC_F);
 		else
-			cbuffer_decode[(n1 - 2) / 2]->SetDcc(DCC_M);
+			cbuffer_decode[(n1 - 1) / 2]->SetDcc(DCC_M);
 	}
 	for (int i = 0; i < cbuffer_decode.size();i++)
 		if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
@@ -887,24 +885,28 @@ bool CallSatAndReadReport(){
 
 double CalQuality(int year){
 	double worst_all = 0, y = year;
-	double Aging_M = AgingRate(WORST, year);	
+	double Aging_M = AgingRate(NORMAL, year);
+	cout << "aging_M = " << Aging_M << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		double best_case = 10000;
 		for (int j = 0; j < PathC.size(); j++){
-			if (i == j)	continue;
-			double Aging_P = Aging_M*EdgeA[i][j] + EdgeB[i][j] - 0.5*(1 - cor[i][j]);	//y = ax+b+error(和相關係數有關)
-			if (Vio_Check(PathC[j], y, Aging_P)){
-				while (Vio_Check(PathC[j], y, Aging_P)) y += 0.25;
-				y -= 0.25;
-				if (best_case>y)
-					best_case = y;
+			//cout << "i = " << i << " j = " << j << endl;
+			if (!Choice[j])
+				continue;
+			double Aging_P = Aging_M*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
+			//cout << "aging_p " << Aging_P << endl;
+			double st = 1.0, ed = 10.0, mid;
+			while (ed - st > 0.025){
+				mid = (st + ed) / 2;
+				if (Vio_Check(PathC[j], mid, Aging_P))
+					st = mid;
+				else
+					ed = mid;
 			}
-			else{
-				while (!Vio_Check(PathC[j], y, Aging_P)) y -= 0.25;
-				y += 0.25;
-				if (best_case>y)
-					best_case = y;
-			}
+			if (mid < best_case)
+				best_case = mid;
+			if (i == j)
+				cout << mid << endl;
 		}
 		if (worst_all < best_case)
 			worst_all = best_case;
