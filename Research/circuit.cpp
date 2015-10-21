@@ -387,7 +387,7 @@ void PATH::CalWeight(){
 	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
 }
 double thershold = 0.8;
-double t_slope = 0.8;	//如果斜為負 仍需兩點都選
+double t_slope = 0.95;	//如果斜為負 仍需兩點都選
 
 bool Check_Connect(int a, int b){
 	if (EdgeA[a][b] > 1)
@@ -884,20 +884,18 @@ bool CallSatAndReadReport(){
 
 
 double CalQuality(int year){
-	double worst_all = 0, y = year;
-	double Aging_M = AgingRate(NORMAL, year);
-	cout << "aging_M = " << Aging_M << endl;
+	double worst_all = 0;	
+	
 	for (int i = 0; i < PathC.size(); i++){
 		double best_case = 10000;
-		for (int j = 0; j < PathC.size(); j++){
-			//cout << "i = " << i << " j = " << j << endl;
+		for (int j = 0; j < PathC.size(); j++){			
 			if (!Choice[j])
 				continue;
-			double Aging_P = Aging_M*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
-			//cout << "aging_p " << Aging_P << endl;
+			if (EdgeA[i][j]>1)	continue;
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.025){
 				mid = (st + ed) / 2;
+				double Aging_P = AgingRate(NORMAL, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;
 				else
@@ -905,8 +903,7 @@ double CalQuality(int year){
 			}
 			if (mid < best_case)
 				best_case = mid;
-			if (i == j)
-				cout << mid << endl;
+			cout << "best of path " << i << " = " << mid << endl;
 		}
 		if (worst_all < best_case)
 			worst_all = best_case;

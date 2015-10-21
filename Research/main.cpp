@@ -60,8 +60,8 @@ int main(int argc, char* argv[]){
 				cor[i][j] = 0;
 				continue;
 			}
-			double a = (double)rand()*2/RAND_MAX-1;	//-1~1
-			double b = (double)rand() / RAND_MAX-0.5;	//-0.5~0.5
+			double a = (double)rand() / RAND_MAX*0.3 + 0.85;	//0.8~1.2
+			double b = 0.0;// (double)rand() / RAND_MAX - 0.5;	//-0.5~0.5
 			double c = (double)rand() * 2 / RAND_MAX - 1;
 			EdgeA[i][j] = a;		// y = ax+b
 			EdgeB[i][j] = b;
