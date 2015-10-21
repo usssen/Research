@@ -85,6 +85,6 @@ int main(int argc, char* argv[]){
 			break;
 		PathC.pop_back();
 	}
-	//cout << "Q = " << CalQuality(year) << endl;
+	cout << "Q = " << CalQuality(year) << endl;
 	return 0;
 }

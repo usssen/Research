@@ -5,6 +5,6 @@ const int MAXPATHS = 5000;
 
 enum WIRETYPE { PI, PO, INN };
 enum PATHTYPE { LONG, SHORT };
-enum AGINGTYPE { DCC_NONE, DCC_S, DCC_F, DCC_M, FF, NORMAL };
+enum AGINGTYPE { DCC_NONE, DCC_S, DCC_F, DCC_M, FF, NORMAL,WORST};
 
 #endif

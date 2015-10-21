@@ -261,7 +261,7 @@ void ReadPath_l(string filename){
 	}	
 	file.close();
 }
-
+/*
 void ReadPath_s(string filename){
 	fstream file;
 	file.open(filename.c_str(), ios::in);
@@ -374,7 +374,7 @@ void ReadPath_s(string filename){
 	}	
 	file.close();
 }
-
+*/
 void PATH::CalWeight(){
 	GATE* stptr = gate_list[0];
 	GATE* edptr = gate_list[gate_list.size() - 1];
@@ -386,25 +386,33 @@ void PATH::CalWeight(){
 	}
 	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
 }
-double thershold = 0.7;
-double t_slope = 0.7;	//如果斜為負 仍需兩點都選
+double thershold = 0.8;
+double t_slope = 0.8;	//如果斜為負 仍需兩點都選
+
+bool Check_Connect(int a, int b){
+	if (EdgeA[a][b] > 1)
+		return Check_Connect(b, a);
+	if (cor[a][b]<thershold && cor[a][b]>-thershold)
+		return false;
+	if (EdgeA[a][b] < t_slope)
+		return false;
+	return true;
+}
 
 void ChooseVertexWithGreedyMDS(){
-	int* degree;
-	degree = (int*)malloc(PathC.size()*sizeof(int));
-	Choice = (bool*)malloc(PathC.size()*sizeof(bool));
 	int No_node = PathC.size();
-	for (int i = 0; i < No_node; i++)
-		Choice[i] = false;
+	int* degree = new int[No_node];
+	Choice = new bool[No_node];
 	for (int i = 0; i < No_node; i++){
+		Choice[i] = false;
 		degree[i] = 0;
 		for (int j = 0; j < No_node; j++){
-			if ((cor[i][j] >= thershold || cor[j][i]*-1>=thershold)&&(EdgeA[i][j]>t_slope && EdgeA[i][j]<1/t_slope))	//相關係數要超過thershold才視為有邊
+			if (Check_Connect(i,j))	//相關係數要超過thershold才視為有邊
 				degree[i]++;																				//不用管[j][i] 因為 t_slope<a<1/t_slope => t_slope<1/a<1/t_slope
 		}
 	}
-	
-	int* color = (int*)malloc(No_node*sizeof(int));
+
+	int* color = new int[No_node];
 	for (int i = 0; i < No_node; i++)
 		color[i] = 1;	//初始全白點
 	bool chk = true;
@@ -422,7 +430,7 @@ void ChooseVertexWithGreedyMDS(){
 		color[maxi] = -1;	//被選點改為黑
 		
 		for (i = 0; i < No_node; i++){
-			if (cor[maxi][i] >= thershold || cor[maxi][i] * -1 >= thershold && (EdgeA[maxi][i]>t_slope && EdgeA[maxi][i]<1 / t_slope)){
+			if (Check_Connect(maxi,i)){
 				degree[i]--;
 				if (color[i] == 1)
 					color[i] = 0;	//連出者改為灰,degree-1
@@ -439,6 +447,8 @@ map<GATE*, int> cbuffer_code;
 map<int, GATE*> cbuffer_decode;
 
 int HashAllClockBuffer(){
+	cbuffer_code.clear();
+	cbuffer_decode.clear();
 	int k = 0;
 	for (unsigned i = 0; i < PathC.size(); i++){
 		PATH* pptr = PathC[i];
@@ -533,10 +543,92 @@ bool Vio_Check(PATH* pptr,int stn,int edn,AGINGTYPE ast, AGINGTYPE aed,int year)
 	}
 }
 
+bool Vio_Check(PATH* pptr, double year,double Aging_P){
+	GATE* stptr = pptr->Gate(0);
+	GATE* edptr = pptr->Gate(pptr->length() - 1);
+	int ls = stptr->Clock_Length();
+	int le = edptr->Clock_Length();
+	double clks = 0.0;
+	if (stptr->GetType() != "PI"){
+		clks = pptr->GetCTH();
+		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
+		for (int i = 2; i < stptr->Clock_Length(); i++)
+		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+		AGINGTYPE DCC_insert = DCC_NONE;
+		int i;
+		for (i = 0; i < ls && stptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++)
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
+		if (i < ls)
+			DCC_insert = stptr->GetClockPath(i)->GetDcc();
+		for (; i < ls; i++)
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_insert, year);
+		switch (DCC_insert){
+		case DCC_S:
+		case DCC_M:
+			clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
+			break;
+		case DCC_F:
+			clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
+			break;
+		default:
+			break;
+		}
+	}
+	double clkt = 0.0;
+	if (edptr->GetType() != "PO"){
+		clkt = pptr->GetCTE();
+		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
+		for (int i = 2; i < edptr->Clock_Length(); i++)
+		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
+		int i;
+		AGINGTYPE DCC_insert = DCC_NONE;
+		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc()==DCC_NONE; i++)
+			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
+		if (i < le)
+			DCC_insert = edptr->GetClockPath(i)->GetDcc();
+		for (; i < le; i++)
+			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_insert, year);
+		switch (DCC_insert){
+		case DCC_S:
+		case DCC_M:
+			clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
+			break;
+		case DCC_F:
+			clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
+			break;
+		default:
+			break;
+		}
+	}
+	double Tcq = 0.0;
+	if (stptr->GetType() != "PI")
+		Tcq = (pptr->Out_time(0) - pptr->In_time(0))*(AgingRate(FF, year) + 1);
+	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
+	DelayP += DelayP*Aging_P;
+	if (pptr->GetType() == LONG){
+		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period){
+			return true;
+		}
+		return false;
+	}
+	else{
+		if (clks + Tcq + DelayP>clkt + pptr->GetHT())
+			return true;
+		return false;
+	}
+}
+
 void CheckPathAttackbility(int year){
 		int aa, bb, cc, dd;
 		aa = bb = cc = dd = 0;
-		period = (1+AgingRate(NORMAL,year))*(PathR[0].In_time(PathR[0].length() - 1) - PathR[0].In_time(0)+PathR[0].GetCTH()-PathR[0].GetCTE());
+		period = 0.0;
+		for (int i = 0; i < PathR.size(); i++){
+			double pp = (1.0 + AgingRate(NORMAL, year))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0))+(1.0+AgingRate(FF,year))*(PathR[i].Out_time(0)-PathR[i].In_time(0))+ (1.0+AgingRate(DCC_NONE,year))*(PathR[i].GetCTH() - PathR[i].GetCTE());
+			if (pp>period)
+				period = pp;
+		}
 		cout << period << endl;
 		cin >> aa;
 	for (int i = 0; i < PathR.size(); i++){		
@@ -616,14 +708,16 @@ void CheckPathAttackbility(int year){
 }
 
 void GenerateSAT(string filename,int year){
-	
+	int ct = 0;
+	for (int i = 0; i < PathC.size(); i++)
+		if (Choice[i]) ct++;
+	cout << ct << endl;
 	fstream file;
 	fstream temp;
 	temp.open("check.txt", ios::out);
 	file.open(filename.c_str(), ios::out);
 	map<GATE*, bool> exclusive;
-	unsigned clause = 0;
-	unsigned varible = HashAllClockBuffer() * 2;	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2	
+	HashAllClockBuffer();	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2	
 	for (unsigned i = 0; i < PathC.size(); i++){
 		PATH* pptr = PathC[i];
 		GATE* stptr = pptr->Gate(0);
@@ -675,8 +769,7 @@ void GenerateSAT(string filename,int year){
 						if (j == edn)	continue;
 						file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 					}
-					file << 0 << endl;
-					clause++;
+					file << 0 << endl;					
 				}
 				//可能需要加入被選中者過早錯誤的反向					
 			}
@@ -747,8 +840,7 @@ void GenerateSAT(string filename,int year){
 								if (j == edn)	continue;
 								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
-							file << 0 << endl;
-							clause++;
+							file << 0 << endl;							
 						}
 					}
 				}
@@ -760,6 +852,14 @@ void GenerateSAT(string filename,int year){
 }
 
 bool CallSatAndReadReport(){
+	for (int i = 0; i < PathC.size(); i++){
+		GATE* stptr = PathC[i]->Gate(0);
+		GATE* edptr = PathC[i]->Gate(PathC[i]->length() - 1);
+		for (int i = 0; i < stptr->Clock_Length(); i++)
+			stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+		for (int i = 0; i < edptr->Clock_Length(); i++)
+			edptr->GetClockPath(i)->SetDcc(DCC_NONE);
+	}
 	system("minisat sat.cnf temp.sat");
 	fstream file;
 	file.open("temp.sat", ios::in);
@@ -784,6 +884,30 @@ bool CallSatAndReadReport(){
 		return true;
 }
 
-//double CalQuality(int year){
-//
-//}
+
+double CalQuality(int year){
+	double worst_all = 0, y = year;
+	double Aging_M = AgingRate(WORST, year);	
+	for (int i = 0; i < PathC.size(); i++){
+		double best_case = 10000;
+		for (int j = 0; j < PathC.size(); j++){
+			if (i == j)	continue;
+			double Aging_P = Aging_M*EdgeA[i][j] + EdgeB[i][j] - 0.5*(1 - cor[i][j]);	//y = ax+b+error(和相關係數有關)
+			if (Vio_Check(PathC[j], y, Aging_P)){
+				while (Vio_Check(PathC[j], y, Aging_P)) y += 0.25;
+				y -= 0.25;
+				if (best_case>y)
+					best_case = y;
+			}
+			else{
+				while (!Vio_Check(PathC[j], y, Aging_P)) y -= 0.25;
+				y += 0.25;
+				if (best_case>y)
+					best_case = y;
+			}
+		}
+		if (worst_all < best_case)
+			worst_all = best_case;
+	}
+	return worst_all;
+}

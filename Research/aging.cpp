@@ -24,22 +24,31 @@ void ReadAgingData(){
 	file.close();
 }
 
-double AgingRate(AGINGTYPE status, int year){	
+double AgingRate(AGINGTYPE status, double year){	
 	
-	double second = year * 365 * 86400;	//0.0039*(0.5*t)^0.2 + 1
-	
+	double second = year * 365 * 86400;	//0.0039*(0.5*t)^0.2 + 1	average case -> worst case即去掉0.5(alpha)
+	int y = year;	//轉整數
 	switch (status){
 	case DCC_M:
 	case DCC_NONE:
-		return Rate[year][1];
+		if (year - (double)y < 0.001)
+			return (Rate[y + 1][1] - Rate[y][1]) *(year - (double)y) + Rate[y][1];
+		return Rate[y][1];
 		break;
 	case DCC_F:
-		return Rate[year][2];
+		if (year - (double)y < 0.001)
+			return (Rate[y + 1][2] - Rate[y][2]) *(year - (double)y) + Rate[y][2];
+		return Rate[y][2];
 	case DCC_S:
-		return Rate[year][0];
+		return Rate[y][0];
+		if (year - (double)y < 0.001)
+			return (Rate[y + 1][0] - Rate[y][0]) *(year - (double)y) + Rate[y][0];
 	case FF:
 		return 0.02*year;
+	case WORST:
+		return a*pow(second, n);
 	default:
 		return a*pow(alpha*second, n);
 	}
 }
+

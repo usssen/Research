@@ -10,14 +10,14 @@ using namespace std;
 
 void ReadCircuit(string filename);
 void ReadPath_l(string filename);
-void ReadPath_s(string filename);
+//void ReadPath_s(string filename);
 void CalVertexWeight();
 void ChooseVertexWithGreedyMDS();
 int HashAllClockBuffer();
 void GenerateSAT(string filename,int year);
 bool CallSatAndReadReport();
 void CheckPathAttackbility(int year);
-//double CalQuality(int year);
+double CalQuality(int year);
 
 class GATE;
 
