@@ -628,7 +628,7 @@ void CheckPathAttackbility(int year){
 				period = pp;
 		}
 		cout << period << endl;
-		cin >> aa;
+		//cin >> aa;
 	for (int i = 0; i < PathR.size(); i++){		
 		bool chk = false;
 		PATH* pptr = &PathR[i];		
@@ -883,19 +883,20 @@ bool CallSatAndReadReport(){
 }
 
 
-double CalQuality(int year){
+double CalQuality(int year){	//加入剩餘PATH不會提早出錯的確認
 	double worst_all = 0;	
-	
 	for (int i = 0; i < PathC.size(); i++){
 		double best_case = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
 			if (!Choice[j])
 				continue;
-			if (EdgeA[i][j]>1)	continue;
+			//if (EdgeA[i][j]>1)	continue;
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.025){
 				mid = (st + ed) / 2;
-				double Aging_P = AgingRate(NORMAL, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
+				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
+				if (EdgeA[i][j]>1)
+					Aging_P = AgingRate(WORST, mid);
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;
 				else
@@ -903,7 +904,7 @@ double CalQuality(int year){
 			}
 			if (mid < best_case)
 				best_case = mid;
-			cout << "best of path " << i << " = " << mid << endl;
+			//cout << "best of path " << i << " = " << mid << endl;
 		}
 		if (worst_all < best_case)
 			worst_all = best_case;

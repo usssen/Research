@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	//cin >> filename;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	int year = 5;
+	int year = atoi(argv[3]);
 	ReadAgingData();
 	CheckPathAttackbility(year);
 	if (PathC.size() <= 0){
