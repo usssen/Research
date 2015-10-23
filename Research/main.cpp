@@ -13,7 +13,6 @@ double **EdgeA;	//y = ax+b ¤£¯àª½±µ«Å§i[20000][20000],·|Ãz(³sÄò°O¾ÐÅé¤£¯à¹L2G),­
 double **EdgeB;
 double **cor;	//correlation coefficient
 vector<PATH*> PathC;
-bool* Choice;
 
 int main(int argc, char* argv[]){
 	//if (argc < 3)

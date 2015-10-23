@@ -46,7 +46,7 @@ double AgingRate(AGINGTYPE status, double year){
 	case FF:
 		return 0.02*year;
 	case WORST:
-		return a*pow(second, n);
+		return a*pow(alpha*second, n);
 	default:
 		return a*pow(alpha*second, n);
 	}

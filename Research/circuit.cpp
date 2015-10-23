@@ -4,13 +4,13 @@
 #include "circuit.h"
 #include<stdlib.h>
 #define ERROR 1
+#define MARGIN 1.0
 
 using namespace std;
 
 extern vector<CIRCUIT> Circuit;
 extern vector<PATH> PathR;
 extern vector<PATH*> PathC;
-extern bool* Choice;
 extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
@@ -401,10 +401,9 @@ bool Check_Connect(int a, int b){
 
 void ChooseVertexWithGreedyMDS(){
 	int No_node = PathC.size();
-	int* degree = new int[No_node];
-	Choice = new bool[No_node];
-	for (int i = 0; i < No_node; i++){
-		Choice[i] = false;
+	int* degree = new int[No_node];	
+	for (int i = 0; i < No_node; i++){		
+		PathC[i]->SetChoose(false);
 		degree[i] = 0;
 		for (int j = 0; j < No_node; j++){
 			if (Check_Connect(i,j))	//相關係數要超過thershold才視為有邊
@@ -424,8 +423,8 @@ void ChooseVertexWithGreedyMDS(){
 				max = degree[i];
 				maxi = i;
 			}
-		}			
-		Choice[maxi] = true;
+		}					
+		PathC[maxi]->SetChoose(true);
 		degree[maxi] = -100;
 		color[maxi] = -1;	//被選點改為黑
 		
@@ -624,6 +623,7 @@ void CheckPathAttackbility(int year){
 		period = 0.0;
 		for (int i = 0; i < PathR.size(); i++){
 			double pp = (1.0 + AgingRate(NORMAL, year))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0))+(1.0+AgingRate(FF,year))*(PathR[i].Out_time(0)-PathR[i].In_time(0))+ (1.0+AgingRate(DCC_NONE,year))*(PathR[i].GetCTH() - PathR[i].GetCTE());
+			pp *= MARGIN;
 			if (pp>period)
 				period = pp;
 		}
@@ -707,8 +707,8 @@ void CheckPathAttackbility(int year){
 
 void GenerateSAT(string filename,int year){
 	int ct = 0;
-	for (int i = 0; i < PathC.size(); i++)
-		if (Choice[i]) ct++;
+	for (int i = 0; i < PathC.size(); i++)		
+		if (PathC[i]->Is_Chosen())	ct++;		
 	cout << ct << endl;
 	fstream file;
 	fstream temp;
@@ -723,8 +723,8 @@ void GenerateSAT(string filename,int year){
 		int stn = 0, edn = 0;	//放置點(之後，包括自身都會受影響)
 		int lst = stptr->Clock_Length();
 		int led = edptr->Clock_Length();
-
-		if (!Choice[i])	continue;
+		
+		if (!PathC[i]->Is_Chosen())	continue;
 
 		if (exclusive.find(stptr) == exclusive.end()){
 			for (int j = 0; j < lst; j++){
@@ -884,19 +884,27 @@ bool CallSatAndReadReport(){
 
 
 double CalQuality(int year){	//加入剩餘PATH不會提早出錯的確認
+	
+	for (int i = 0; i < PathR.size(); i++){				
+		if (!PathR[i].Is_Chosen() && !Vio_Check(&PathR[i], (double)year-ERROR, AgingRate(NORMAL, year-ERROR))){
+			if (PathR[i].CheckAttack())
+				cout << "*";
+			cout << i << ' ';
+		}
+	}
+	cout << endl;
 	double worst_all = 0;	
 	for (int i = 0; i < PathC.size(); i++){
 		double best_case = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
-			if (!Choice[j])
-				continue;
-			//if (EdgeA[i][j]>1)	continue;
+			if (!PathC[j]->Is_Chosen())			
+				continue;			
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.025){
 				mid = (st + ed) / 2;
-				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
+				double Aging_P = AgingRate(NORMAL, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
 				if (EdgeA[i][j]>1)
-					Aging_P = AgingRate(WORST, mid);
+					Aging_P = AgingRate(NORMAL, mid);
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;
 				else
