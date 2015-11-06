@@ -9,15 +9,14 @@
 using namespace std;
 vector<CIRCUIT> Circuit;
 vector<PATH> PathR;
-double **EdgeA;	//y = ax+b 不能直接宣告[20000][20000],會爆(連續記憶體不能過2G),要用malloc
+double **EdgeA;
 double **EdgeB;
 double **cor;	//correlation coefficient
 vector<PATH*> PathC;
-bool* Choice;
 
 int main(int argc, char* argv[]){
-	//if (argc < 3)
-	//	return 0;
+	if (argc < 3)
+		return 0;	
 	string filename;
 	filename = argv[1];
 	ReadCircuit(filename);
@@ -26,34 +25,32 @@ int main(int argc, char* argv[]){
 	filename = argv[2];
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
-	cout << "Read Longest Path Finished."<<endl;
-	//lfilename = "testps.rpt";
+	cout << "Read Longest Path Finished."<<endl;	
 	//cout << "Shortest Path File Name : " << endl;
-	//cin >> filename;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	int year = 5;
+	int year = atoi(argv[3]);
 	ReadAgingData();
 	CheckPathAttackbility(year);
+	
 	if (PathC.size() <= 0){
+		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
-	int m, n, i;	
-	double* pData;
-	m = n = PathC.size();
-	EdgeA = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));	//m個陣列開頭+m*n個空間
-	for (i = 0, pData = (double *)(EdgeA + m); i < m; i++, pData += n)	//前m(double*)個為陣列開頭,之後每個開頭(edgea[i])的位置相隔n(double)
-		EdgeA[i] = pData;
-	EdgeB = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));
-	for (i = 0, pData = (double *)(EdgeB + m); i < m; i++, pData += n)
-		EdgeB[i] = pData;
-	cor = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));
-	for (i = 0, pData = (double *)(cor + m); i < m; i++, pData += n)
-		cor[i] = pData;	
 
+	int ss = PathC.size();
+	EdgeA = new double*[ss];
+	EdgeB = new double*[ss];
+	cor = new double*[ss];
+	for (int i = 0; i < ss; i++){
+		EdgeA[i] = new double[ss];
+		EdgeB[i] = new double[ss];
+		cor[i] = new double[ss];
+	}
+	
 	srand(time(NULL));
-	for (int i = 0; i < m; i++){
-		for (int j = i; j < n; j++){
+	for (int i = 0; i < ss; i++){
+		for (int j = i; j < ss; j++){
 			if (j == i){	//y = x
 				EdgeA[i][j] = 1;
 				EdgeB[i][j] = 0;
@@ -73,18 +70,36 @@ int main(int argc, char* argv[]){
 	
 	ChooseVertexWithGreedyMDS();
 	string s;
-	fstream filer;
+	fstream fileres;
 	while (PathC.size() > 0){
 		cout << PathC.size() << endl;
 		GenerateSAT("sat.cnf", year);
 		CallSatAndReadReport();		
-		filer.open("temp.sat");
-		getline(filer, s);
-		filer.close();
+		fileres.open("temp.sat");
+		getline(fileres, s);
+		fileres.close();
 		if (s.find("UNSAT") == string::npos)
 			break;
-		PathC.pop_back();
+		for (int i = 0; i < PathC.size(); i++){
+			if (PathC[i]->Is_Chosen()){
+				PathC[i]->SetChoose(false);
+				break;
+			}
+		}
 	}
 	cout << "Q = " << CalQuality(year) << endl;
+	cout << "Try to Refine Result : " << endl;
+	for (int i = 1; i <= 5; i++){
+		if (!RefineResult(year)){
+			cout << "Result is in limit!" << endl;
+			break;
+		}
+		cout << "Time " << i << " : " << endl;
+		if (!CallSatAndReadReport()){
+			cout << "Can't Refine Anymore" << endl;
+			break;
+		}
+		cout << "Q = " << CalQuality(year) << endl;
+	}	
 	return 0;
 }

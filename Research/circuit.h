@@ -18,6 +18,7 @@ void GenerateSAT(string filename,int year);
 bool CallSatAndReadReport();
 void CheckPathAttackbility(int year);
 double CalQuality(int year);
+bool RefineResult(int year);
 
 class GATE;
 
@@ -144,9 +145,10 @@ private:
 	double clock_to_end;
 	int weight;
 	bool attackable;
+	bool choose;
 	PATHTYPE type;
 public:
-	PATH():attackable(false){
+	PATH():attackable(false),choose(false){
 		setuptime = holdtime = -1;
 		gate_list.clear();
 		timing.clear();
@@ -187,6 +189,8 @@ public:
 	int length(){ return gate_list.size(); }
 	void SetAttack(bool a){ attackable = a; }
 	bool CheckAttack(){ return attackable; }
+	bool Is_Chosen(){ return choose; }
+	void SetChoose(bool c){ choose = c; }
 };
 
 

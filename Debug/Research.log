@@ -1,17 +1,37 @@
+<<<<<<< HEAD
 ﻿已經開始建置於 2015/10/21 下午 09:38:07。
      1>節點 2 (Build 目標) 上的專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj"。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\main.cpp
          main.cpp
      1>research\main.cpp(54): warning C4244: '引數' : 將 'time_t' 轉換為 'unsigned int'，由於類型不同，可能導致資料遺失
+=======
+﻿已經開始建置於 2015/10/29 下午 04:23:17。
+     1>節點 2 (Build 目標) 上的專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj"。
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\circuit.cpp
+         circuit.cpp
+     1>research\circuit.cpp(624): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(632): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(710): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(850): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(877): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(887): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(889): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(915): warning C4018: '<' : signed/unsigned 不相符
+>>>>>>> 2dbd46b98822bca879088ebc1a654ed8a5624d0b
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
          Debug\circuit.obj
          Debug\main.obj
          Debug\test.obj
-         Research.vcxproj -> C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe
-     1>專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj" (Build 目標) 建置完成。
+         Research.vcxproj -> C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe
+     1>專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj" (Build 目標) 建置完成。
 
 建置成功。
 
+<<<<<<< HEAD
 經過時間 00:00:01.21
+=======
+經過時間 00:00:01.37
+>>>>>>> 2dbd46b98822bca879088ebc1a654ed8a5624d0b

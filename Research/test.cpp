@@ -59,3 +59,19 @@ cout<<stptr->GetName() << ' ' << edptr->GetName() << endl;
 cout << clks << ' ' << Tcq << ' ' << DelayP << ' ' << clkt << ' ' << pptr->GetST() << ' ' << period << endl << pptr->GetCTH() << endl;
 }
 */
+
+
+/*
+int m, n, i;
+double* pData;
+m = n = PathC.size();
+EdgeA = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));	//m個陣列開頭+m*n個空間
+for (i = 0, pData = (double *)(EdgeA + m); i < m; i++, pData += n)	//前m(double*)個為陣列開頭,之後每個開頭(edgea[i])的位置相隔n(double)
+EdgeA[i] = pData;
+EdgeB = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));
+for (i = 0, pData = (double *)(EdgeB + m); i < m; i++, pData += n)
+EdgeB[i] = pData;
+cor = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));
+for (i = 0, pData = (double *)(cor + m); i < m; i++, pData += n)
+cor[i] = pData;
+*/
