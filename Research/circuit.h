@@ -18,6 +18,7 @@ void GenerateSAT(string filename,int year);
 bool CallSatAndReadReport();
 void CheckPathAttackbility(int year);
 double CalQuality(int year);
+bool RefineResult(int year);
 
 class GATE;
 

@@ -1,4 +1,4 @@
-﻿已經開始建置於 2015/10/23 下午 04:46:27。
+﻿已經開始建置於 2015/10/29 下午 04:23:17。
      1>節點 2 (Build 目標) 上的專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj"。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\circuit.cpp
@@ -6,11 +6,11 @@
      1>research\circuit.cpp(624): warning C4018: '<' : signed/unsigned 不相符
      1>research\circuit.cpp(632): warning C4018: '<' : signed/unsigned 不相符
      1>research\circuit.cpp(710): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(853): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(879): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(888): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(897): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(899): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(850): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(877): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(887): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(889): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(915): warning C4018: '<' : signed/unsigned 不相符
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
          Debug\circuit.obj
@@ -21,4 +21,4 @@
 
 建置成功。
 
-經過時間 00:00:01.02
+經過時間 00:00:01.37

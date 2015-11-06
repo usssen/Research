@@ -4,7 +4,7 @@
 #include "circuit.h"
 #include<stdlib.h>
 #define ERROR 1
-#define MARGIN 1.0
+#define MARGIN 1.025
 
 using namespace std;
 
@@ -387,17 +387,19 @@ void PATH::CalWeight(){
 	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
 }
 double thershold = 0.8;
-double t_slope = 0.95;	//如果斜為負 仍需兩點都選
+double t_slope = 0.95;
 
 bool Check_Connect(int a, int b){
 	if (EdgeA[a][b] > 1)
 		return Check_Connect(b, a);
-	if (cor[a][b]<thershold && cor[a][b]>-thershold)
+	if (cor[a][b]<thershold && cor[a][b]>-thershold)		//相關係數要超過thershold才視為有邊
 		return false;
-	if (EdgeA[a][b] < t_slope)
+	if (EdgeA[a][b] < t_slope)	//斜率在範圍內
 		return false;
 	return true;
 }
+
+
 
 void ChooseVertexWithGreedyMDS(){
 	int No_node = PathC.size();
@@ -406,8 +408,8 @@ void ChooseVertexWithGreedyMDS(){
 		PathC[i]->SetChoose(false);
 		degree[i] = 0;
 		for (int j = 0; j < No_node; j++){
-			if (Check_Connect(i,j))	//相關係數要超過thershold才視為有邊
-				degree[i]++;																				//不用管[j][i] 因為 t_slope<a<1/t_slope => t_slope<1/a<1/t_slope
+			if (Check_Connect(i,j))
+				degree[i]++;
 		}
 	}
 
@@ -711,8 +713,7 @@ void GenerateSAT(string filename,int year){
 		if (PathC[i]->Is_Chosen())	ct++;		
 	cout << ct << endl;
 	fstream file;
-	fstream temp;
-	temp.open("check.txt", ios::out);
+	fstream temp;	
 	file.open(filename.c_str(), ios::out);
 	map<GATE*, bool> exclusive;
 	HashAllClockBuffer();	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2	
@@ -768,8 +769,7 @@ void GenerateSAT(string filename,int year){
 						file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 					}
 					file << 0 << endl;					
-				}
-				//可能需要加入被選中者過早錯誤的反向					
+				}									
 			}
 			stn++;
 			edn++;
@@ -845,8 +845,7 @@ void GenerateSAT(string filename,int year){
 			}
 		}
 	}
-	file.close();
-	temp.close();
+	file.close();	
 }
 
 bool CallSatAndReadReport(){
@@ -876,6 +875,7 @@ bool CallSatAndReadReport(){
 		else
 			cbuffer_decode[(n1 - 1) / 2]->SetDcc(DCC_M);
 	}
+	file.close();
 	for (int i = 0; i < cbuffer_decode.size();i++)
 		if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
 			cout << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
@@ -883,16 +883,8 @@ bool CallSatAndReadReport(){
 }
 
 
-double CalQuality(int year){	//加入剩餘PATH不會提早出錯的確認
-	
-	for (int i = 0; i < PathR.size(); i++){				
-		if (!PathR[i].Is_Chosen() && !Vio_Check(&PathR[i], (double)year-ERROR, AgingRate(NORMAL, year-ERROR))){
-			if (PathR[i].CheckAttack())
-				cout << "*";
-			cout << i << ' ';
-		}
-	}
-	cout << endl;
+double CalQuality(int year){	//沒被選到的path提早出錯 -> 取差最遠的放入SAT重解	
+
 	double worst_all = 0;	
 	for (int i = 0; i < PathC.size(); i++){
 		double best_case = 10000;
@@ -902,20 +894,94 @@ double CalQuality(int year){	//加入剩餘PATH不會提早出錯的確認
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.025){
 				mid = (st + ed) / 2;
-				double Aging_P = AgingRate(NORMAL, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
+				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
 				if (EdgeA[i][j]>1)
-					Aging_P = AgingRate(NORMAL, mid);
+					Aging_P = AgingRate(WORST, mid);
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;
 				else
 					ed = mid;
 			}
 			if (mid < best_case)
-				best_case = mid;
-			//cout << "best of path " << i << " = " << mid << endl;
+				best_case = mid;			
 		}
 		if (worst_all < best_case)
 			worst_all = best_case;
 	}
 	return worst_all;
+}
+
+bool RefineResult(int year){
+	double early = 10000.0;
+	int earlyp = -1;
+	for (int i = 0; i < PathR.size(); i++){
+		if (!PathR[i].Is_Chosen() && !Vio_Check(&PathR[i], (double)year - ERROR, AgingRate(WORST, year - ERROR))){
+			if (PathR[i].CheckAttack())
+				cout << "*";
+			cout << i << ' ';
+			double st = 1.0, ed = (double)year - ERROR, mid;
+			while (ed - st>0.025){
+				mid = (st + ed) / 2;
+				if (Vio_Check(&PathR[i], mid, AgingRate(WORST, mid)))
+					st = mid;
+				else
+					ed = mid;
+			}
+			if (early > mid){
+				early = mid;
+				earlyp = i;
+			}
+		}
+	}
+	if (earlyp < 0)
+		return false;
+	cout << endl;
+	cout << earlyp << endl;
+	fstream file;
+	file.open("sat.cnf", ios::out | ios::app);
+	if (!file)
+		cout << "fail to open sat.cnf" << endl;
+	PATH* pptr = &PathR[earlyp];
+	if (pptr->Gate(0)->GetType() != "PI"){
+		GATE* stptr = pptr->Gate(0);
+		int ls = stptr->Clock_Length(), i;
+		for (i = 0; i < ls && stptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++);
+		if (i < ls){
+			switch (stptr->GetClockPath(i)->GetDcc()){
+			case DCC_S:
+				file << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 1) << ' ' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 2 << ' ' << '0' << endl;
+				break;
+			case DCC_F:
+				file << cbuffer_code[stptr->GetClockPath(i)] * 2 + 1 << ' ' << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
+				break;
+			case DCC_M:
+				file << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 1) << ' ' << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	if (pptr->Gate(pptr->length()-1)->GetType() != "PO"){
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		int le = edptr->Clock_Length(), i;
+		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++);
+		if (i < le){
+			switch (edptr->GetClockPath(i)->GetDcc()){
+			case DCC_S:
+				file << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 1) << ' ' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 2 << ' ' << '0' << endl;
+				break;
+			case DCC_F:
+				file << cbuffer_code[edptr->GetClockPath(i)] * 2 + 1 << ' ' << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
+				break;
+			case DCC_M:
+				file << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 1) << ' ' << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	file.close();
+	return true;
 }
