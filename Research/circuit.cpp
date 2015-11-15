@@ -1,10 +1,11 @@
 #include<iostream>
 #include<fstream>
 #include<sstream>
+#include<math.h>
 #include "circuit.h"
 #include<stdlib.h>
 #define ERROR 1
-#define MARGIN 1.025
+#define MARGIN 1.0
 
 using namespace std;
 
@@ -14,6 +15,7 @@ extern vector<PATH*> PathC;
 extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
+extern int **conf;
 double period;
 
 
@@ -375,130 +377,31 @@ void ReadPath_s(string filename){
 	file.close();
 }
 */
-void PATH::CalWeight(){
-	GATE* stptr = gate_list[0];
-	GATE* edptr = gate_list[gate_list.size() - 1];
-	int same = 0;
-	while (stptr->Clock_Length() > same && edptr->Clock_Length() > same){
-		if (stptr->GetClockPath(same) != edptr->GetClockPath(same))
-			break;
-		same++;
-	}
-	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
-}
-double thershold = 0.8;
-double t_slope = 0.95;
 
-bool Check_Connect(int a, int b){
-	if (EdgeA[a][b] > 1)
-		return Check_Connect(b, a);
-	if (cor[a][b]<thershold && cor[a][b]>-thershold)		//相關係數要超過thershold才視為有邊
-		return false;
-	if (EdgeA[a][b] < t_slope)	//斜率在範圍內
-		return false;
-	return true;
-}
-
-
-
-void ChooseVertexWithGreedyMDS(){
-	int No_node = PathC.size();
-	int* degree = new int[No_node];	
-	for (int i = 0; i < No_node; i++){		
-		PathC[i]->SetChoose(false);
-		degree[i] = 0;
-		for (int j = 0; j < No_node; j++){
-			if (Check_Connect(i,j))
-				degree[i]++;
-		}
-	}
-
-	int* color = new int[No_node];
-	for (int i = 0; i < No_node; i++)
-		color[i] = 1;	//初始全白點
-	bool chk = true;
-
-	while(chk){
-		int i,max, maxi;
-		for (i = 0, max = -100; i < No_node; i++){
-			if (degree[i]>max){
-				max = degree[i];
-				maxi = i;
-			}
-		}					
-		PathC[maxi]->SetChoose(true);
-		degree[maxi] = -100;
-		color[maxi] = -1;	//被選點改為黑
-		
-		for (i = 0; i < No_node; i++){
-			if (Check_Connect(maxi,i)){
-				degree[i]--;
-				if (color[i] == 1)
-					color[i] = 0;	//連出者改為灰,degree-1
-			}			
-		}
-				for (i = 0, chk = false; i < No_node; i++){
-			if (color[i] == 1)
-				chk = true;
-		}
-	}
-}
-
-map<GATE*, int> cbuffer_code;
-map<int, GATE*> cbuffer_decode;
-
-int HashAllClockBuffer(){
-	cbuffer_code.clear();
-	cbuffer_decode.clear();
-	int k = 0;
-	for (unsigned i = 0; i < PathC.size(); i++){
-		PATH* pptr = PathC[i];
-		GATE* stptr = pptr->Gate(0);
-		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		if (stptr->GetType() != "PI"){
-			for (int j = 0; j < stptr->Clock_Length(); j++)
-				if (cbuffer_code.find(stptr->GetClockPath(j)) == cbuffer_code.end()){
-					cbuffer_code[stptr->GetClockPath(j)] = k;
-					cbuffer_decode[k] = stptr->GetClockPath(j);
-					k++;
-			}
-		}		
-		if (edptr->GetType() != "PO"){
-			for (int j = 0; j < edptr->Clock_Length(); j++)
-			if (cbuffer_code.find(edptr->GetClockPath(j)) == cbuffer_code.end()){
-				cbuffer_code[edptr->GetClockPath(j)] = k;
-				cbuffer_decode[k] = edptr->GetClockPath(j);
-				k++;
-			}
-		}
-	}
-	return k;
-}
-
-bool Vio_Check(PATH* pptr,int stn,int edn,AGINGTYPE ast, AGINGTYPE aed,int year){
+bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
 	GATE* stptr = pptr->Gate(0);
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
 	double clks = 0.0;
 	if (stptr->GetType() != "PI"){
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
-		for (int i = 2; i < stptr->Clock_Length();i++)
-			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+		for (int i = 2; i < stptr->Clock_Length(); i++)
+		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < stn; i++)
-			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE,year);	
-		for (int i = stn; i < stptr->Clock_Length();i++)
-			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(ast,year);
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
+		for (int i = stn; i < stptr->Clock_Length(); i++)
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(ast, year);
 		switch (ast){
-			case DCC_S:
-			case DCC_M:
-				clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
-				break;
-			case DCC_F:
-				clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
-				break;
-			default:
-				break;
+		case DCC_S:
+		case DCC_M:
+			clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
+			break;
+		case DCC_F:
+			clks += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
+			break;
+		default:
+			break;
 		}
 	}
 	double clkt = 0.0;
@@ -506,34 +409,34 @@ bool Vio_Check(PATH* pptr,int stn,int edn,AGINGTYPE ast, AGINGTYPE aed,int year)
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < edptr->Clock_Length(); i++)
-			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();		
+		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < edn; i++)
-			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE,year);	
+			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = edn; i < edptr->Clock_Length(); i++)
-			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(aed,year);
+			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(aed, year);
 		switch (aed){
-			case DCC_S:
-			case DCC_M:
-				clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
-				break;
-			case DCC_F:
-				clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
-				break;
-			default:
-				break;
+		case DCC_S:
+		case DCC_M:
+			clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.33;
+			break;
+		case DCC_F:
+			clkt += smallest*(AgingRate(DCC_NONE, year) + 1)*1.67;
+			break;
+		default:
+			break;
 		}
 	}
 	double Tcq = 0.0;
 	if (stptr->GetType() != "PI")
-		Tcq = (pptr->Out_time(0) - pptr->In_time(0))*(AgingRate(FF, year)+1);
+		Tcq = (pptr->Out_time(0) - pptr->In_time(0))*(AgingRate(FF, year) + 1);
 	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
 	//for (int i = 1; i < pptr->length() - 1; i++)		//前後的ff/PO/PI不用算
 	//	DelayP += (pptr->Out_time(i) - pptr->In_time(i))*AgingRate(NORMAL,year);
 	DelayP += DelayP*AgingRate(NORMAL, year);
 	if (pptr->GetType() == LONG){
-		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)	
-			return true;		
+		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)
+			return true;
 		return false;
 	}
 	else{
@@ -543,7 +446,7 @@ bool Vio_Check(PATH* pptr,int stn,int edn,AGINGTYPE ast, AGINGTYPE aed,int year)
 	}
 }
 
-bool Vio_Check(PATH* pptr, double year,double Aging_P){
+bool Vio_Check(PATH* pptr, double year, double Aging_P){
 	GATE* stptr = pptr->Gate(0);
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
 	int ls = stptr->Clock_Length();
@@ -584,7 +487,7 @@ bool Vio_Check(PATH* pptr, double year,double Aging_P){
 			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		int i;
 		AGINGTYPE DCC_insert = DCC_NONE;
-		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc()==DCC_NONE; i++)
+		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++)
 			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		if (i < le)
 			DCC_insert = edptr->GetClockPath(i)->GetDcc();
@@ -608,8 +511,8 @@ bool Vio_Check(PATH* pptr, double year,double Aging_P){
 	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
 	DelayP += DelayP*Aging_P;
 	if (pptr->GetType() == LONG){
-		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)			
-			return true;		
+		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)
+			return true;
 		return false;
 	}
 	else{
@@ -618,6 +521,421 @@ bool Vio_Check(PATH* pptr, double year,double Aging_P){
 		return false;
 	}
 }
+
+void PATH::CalWeight(){
+	GATE* stptr = gate_list[0];
+	GATE* edptr = gate_list[gate_list.size() - 1];
+	int same = 0;
+	while (stptr->Clock_Length() > same && edptr->Clock_Length() > same){
+		if (stptr->GetClockPath(same) != edptr->GetClockPath(same))
+			break;
+		same++;
+	}
+	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
+}
+double thershold = 0.8;
+double t_slope = 0.95;
+
+bool Check_Connect(int a, int b){
+	if (EdgeA[a][b] > 1)
+		return Check_Connect(b, a);
+	if (cor[a][b]<thershold && cor[a][b]>-thershold)		//相關係數要超過thershold才視為有邊
+		return false;
+	if (EdgeA[a][b] < t_slope)	//斜率在範圍內
+		return false;
+	return true;
+}
+
+
+inline double absl(double x){
+	if (x < 0)
+		return -x;
+	return x;
+}
+
+void EstimateTimeEV(double year){
+	int No_node = PathC.size();
+	for (int i = 0; i < No_node; i++){
+		PATH* pptr = PathC[i];
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		double pv = 0;		//	期望值
+		int solc = 0;
+		for (int k = 0; k < No_node;k++){		
+			if (stptr->GetType() == "PI"){
+				for (int j = 0; j < edptr->Clock_Length(); j++){
+					for (int x = 0; x < 4; x++){
+						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+							double st = year - ERROR, ed = year + ERROR, mid;
+							while (ed - st>0.025){
+								mid = (st + ed) / 2;
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								if (EdgeA[k][i]>1)
+									Aging_P = AgingRate(WORST, mid);
+								if (Vio_Check(pptr, mid, Aging_P))
+									st = mid;
+								else
+									ed = mid;
+							}
+							pv += mid;
+							solc++;
+						}
+						edptr->GetClockPath(j)->SetDcc(DCC_NONE);
+					}
+				}
+			}
+			else if (edptr->GetType() == "PO"){
+				for (int j = 0; j < stptr->Clock_Length(); j++){
+					for (int x = 0; x < 4; x++){
+						stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+							double st = year - ERROR, ed = year + ERROR, mid;
+							while (ed - st>0.025){
+								mid = (st + ed) / 2;
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								if (EdgeA[k][i]>1)
+									Aging_P = AgingRate(WORST, mid);
+								if (Vio_Check(pptr, mid, Aging_P))
+									st = mid;
+								else
+									ed = mid;
+							}
+							pv += mid;
+							solc++;
+						}
+						stptr->GetClockPath(j)->SetDcc(DCC_NONE);
+					}
+				}
+			}
+			else{
+				int branch = 0;
+				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
+				for (int j = 0; j < stptr->Clock_Length(); j++){
+					for (int j2 = branch; j2 < edptr->Clock_Length(); j2++){
+						for (int x = 0; x < 4; x++){
+							for (int y = 0; y<4; y++){
+								if (j<branch && y != 0)	continue;
+								edptr->GetClockPath(j2)->SetDcc((AGINGTYPE)y);
+								stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+								if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+									double st = year - ERROR, ed = year + ERROR, mid;
+									while (ed - st>0.025){
+										mid = (st + ed) / 2;
+										double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+										if (EdgeA[k][i]>1)
+											Aging_P = AgingRate(WORST, mid);
+										if (Vio_Check(pptr, mid, Aging_P))
+											st = mid;
+										else
+											ed = mid;
+									}
+									pv += mid;
+									solc++;
+								}
+								stptr->GetClockPath(j)->SetDcc(DCC_NONE);
+								edptr->GetClockPath(j2)->SetDcc(DCC_NONE);
+							}
+						}
+					}
+				}
+			}			
+		}
+		pptr->SetEstimateTime(pv / (double)solc);
+		cout << stptr->Clock_Length()*edptr->Clock_Length() * 3 * 3 + 1 << endl;
+		cout << "solc = " << solc << endl;
+	}
+}
+
+double EstimateAddTimes(double year,int p){	//p是要加入的點
+	double max = 0;
+	for (int i = 0; i < PathC.size(); i++){
+		if (PathC[i]->Is_Chosen() && absl(year - PathC[i]->GetEstimateTime())>max)
+			max = abs(year - PathC[i]->GetEstimateTime());
+	}
+	if (absl(year - PathC[p]->GetEstimateTime()) > max)
+		return absl(year - PathC[p]->GetEstimateTime()) - max;		//傳回的是加入p後會差多少 => 如果比原本的還小就是0 不然就回傳差值
+	return 0.0;
+}
+
+struct PATHSOL{
+	GATE *a,*b;
+	AGINGTYPE ta, tb;
+	PATHSOL(GATE* x,GATE* y,AGINGTYPE m,AGINGTYPE n) :a(x),b(y),ta(m),tb(n){}
+};
+
+bool CheckSolConflict(PATHSOL f, PATH* p){
+	GATE* stptr = p->Gate(0);
+	GATE* edptr = p->Gate(p->length()-1);
+	if (f.a != NULL){
+		if (f.a->GetDcc() !=DCC_NONE && f.ta!=f.a->GetDcc())
+			return false;
+		f.a->SetDcc(f.ta);
+	}
+	if (f.b != NULL){
+		if (f.b->GetDcc() != DCC_NONE && f.tb != f.b->GetDcc())
+			return false;
+		f.b->SetDcc(f.tb);
+	}
+	int c = 0;	//路上通過的有加DCC的gate數
+	for (int i = 0; i < stptr->Clock_Length(); i++){
+		if (stptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+			c++;
+	}
+	if (c >= 2)
+		return false;
+	c = 0;
+	for (int i = 0; i < edptr->Clock_Length(); i++){
+		if (edptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+			c++;
+	}
+	if (c >= 2)
+		return false;
+	return true;
+}
+
+inline void DCCrestore(PATHSOL f){
+	if (f.a)
+		f.a->SetDcc(DCC_NONE);
+	if (f.b)
+		f.b->SetDcc(DCC_NONE);
+}
+
+double EstimateSolMines(int p){	//計算所有現有點在加入後少的解量之幾何平均
+	double res = 1.0;
+	int c = 0;
+	for (int i = 0; i < PathC.size(); i++){
+		if (PathC[i]->Is_Chosen()){
+			res *= (double)conf[p][i] / ((double)conf[p][p] * (double)conf[i][i]);
+			c++;
+		}
+	}
+	if (c == 0)
+		return 0;
+	res = pow(res, 1 / (double)c);	
+	return res;
+}
+
+void CalSolMines(double year, int p){
+	int No_node = PathC.size();		//先計算路徑p的解並暫存
+	vector<PATHSOL> tempsol;
+	tempsol.clear();
+	PATH *pptr = PathC[p];
+	GATE *stptr = pptr->Gate(0), *edptr = pptr->Gate(pptr->length()-1);
+	if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+		PATHSOL pp(NULL, NULL, DCC_NONE, DCC_NONE);
+		tempsol.push_back(pp);
+	}
+	if (stptr->GetType() == "PI"){
+		for (int i = 0; i < edptr->Clock_Length(); i++){
+			for (int x = 1; x < 4; x++){	//只考慮有放的狀況
+				edptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+					PATHSOL pp(NULL, edptr->GetClockPath(i), DCC_NONE, (AGINGTYPE)x);
+					tempsol.push_back(pp);
+				}
+				edptr->GetClockPath(i)->SetDcc(DCC_NONE);
+			}
+		}
+	}
+	else if (edptr->GetType() == "PO"){
+		for (int i = 0; i < stptr->Clock_Length(); i++){
+			for (int x = 1; x < 4; x++){
+				stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+					PATHSOL pp(stptr->GetClockPath(i), NULL, (AGINGTYPE)x, DCC_NONE);
+					tempsol.push_back(pp);
+				}
+				stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+			}
+		}
+	}
+	else{
+		int branch = 0;
+		while (branch<stptr->Clock_Length() && branch<edptr->Clock_Length() && stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
+		for (int i = branch; i < stptr->Clock_Length(); i++){
+			for (int j = branch; j < edptr->Clock_Length(); j++){
+				for (int x = 0; x < 4; x++){
+					for (int y = 0; y < 4; y++){
+						if (x == 0 && y == 0)	continue;
+						if (i < branch && y != 0)	continue;						
+						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
+						stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+							PATHSOL pp(stptr->GetClockPath(i), edptr->GetClockPath(j), (AGINGTYPE)x, (AGINGTYPE)y);
+							tempsol.push_back(pp);
+						}
+						stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+						edptr->GetClockPath(j)->SetDcc(DCC_NONE);
+					}
+				}
+			}
+		}
+	}	
+	conf[p][p] = tempsol.size();	//path p的解數 => conf[a][b]/conf[a][a]*conf[b][b] 之幾何平均 => 剩下解的平均比例
+	for (int i = p; i < PathC.size(); i++)
+		conf[p][i] = conf[i][p] = 0;
+
+	for (int f = 0; f < tempsol.size(); f++){	
+		for (int i = p + 1; i < No_node; i++){
+			pptr = PathC[i];
+			stptr = pptr->Gate(0);
+			edptr = pptr->Gate(pptr->length() - 1);			
+			if (stptr->GetType() == "PI"){
+				for (int i = 0; i < edptr->Clock_Length(); i++){
+					for (int x = 1; x < 4; x++){
+						edptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
+							if (!CheckSolConflict(tempsol[f], pptr)){
+								conf[p][i]++;
+								conf[i][p]++;
+							}
+						}
+						DCCrestore(tempsol[f]);
+						edptr->GetClockPath(i)->SetDcc(DCC_NONE);
+					}
+				}
+			}
+			else if (edptr->GetType() == "PO"){
+				for (int i = 0; i < stptr->Clock_Length(); i++){
+					for (int x = 0; x < 4; x++){
+						stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
+							if (!CheckSolConflict(tempsol[f], pptr)){
+								conf[p][i]++;
+								conf[i][p]++;
+							}
+						}
+						DCCrestore(tempsol[f]);
+						stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+					}
+				}
+			}
+			else{
+				int branch = 0;
+				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
+				for (int i = branch; i < stptr->Clock_Length(); i++){
+					for (int j = branch; j < edptr->Clock_Length(); j++){
+						for (int x = 0; x < 4; x++){
+							for (int y = 0; y < 4; y++){
+								if (x == 0 && y == 0)	continue;
+								if (i < branch && y != 0)	continue;								
+								edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
+								stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+								if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){									
+									if (!CheckSolConflict(tempsol[f], pptr)){
+										conf[p][i]++;
+										conf[i][p]++;
+									}
+								}
+								DCCrestore(tempsol[f]);
+								stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+								edptr->GetClockPath(j)->SetDcc(DCC_NONE);
+							}
+						}
+					}
+				}
+			}
+		}
+	}		
+}
+
+void ChooseVertexWithGreedyMDS(int year){
+	int No_node = PathC.size();
+	int* degree = new int[No_node];
+	int degtot;
+	for (int i = 0; i < No_node; i++){
+		PathC[i]->SetChoose(false);
+		degree[i] = 0;
+		for (int j = 0; j < No_node; j++){
+			if (Check_Connect(i, j))
+				degree[i]++;
+		}		
+	}
+	
+	int* color = new int[No_node];
+	for (int i = 0; i < No_node; i++)
+		color[i] = 1;	//初始全白點
+	bool chk = true;	
+	
+	while (chk){
+		int maxi;
+		double max;
+		degtot = 0;
+		for (int i = 0; i < No_node; i++)
+			if (color[i] != -1)
+				degtot += degree[i];
+		max = -100;
+		for (int i = 0; i < No_node; i++){
+			if (color[i] == -1)	//黑的不選
+				continue;
+			double w = 0;
+			w += EstimateAddTimes(year, i);
+			w += EstimateSolMines(i);
+			if (degtot>0)
+				w += (double)degree[i] / (double)degtot;
+			if (w>max){
+				max = w;
+				maxi = i;
+			}
+		}
+		//cout << max << ',' << maxi << endl;
+		//int aa;
+		//cin >> aa;
+		for (int i = 0; i < No_node; i++){
+			if (Check_Connect(maxi, i)	&& color[i]==1){
+				for (int j = 0; j < No_node; j++){
+					if (Check_Connect(i, j) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
+						degree[j]--;
+				}
+				color[i] = 0;	//被選點的隔壁改為灰
+				if (color[maxi] == 1)	//被選點改為黑,旁邊的degree -1
+					degree[i]--;
+			}
+		}		
+		PathC[maxi]->SetChoose(true);
+		degree[maxi] = 0;
+		color[maxi] = -1;	//被選點改為黑
+		chk = false;
+		for (int i = 0; i < No_node; i++){
+			if (color[i] == 1){
+				chk = true;				
+			}
+		}		
+	}
+}
+
+map<GATE*, int> cbuffer_code;
+map<int, GATE*> cbuffer_decode;
+
+int HashAllClockBuffer(){
+	cbuffer_code.clear();
+	cbuffer_decode.clear();
+	int k = 0;
+	for (unsigned i = 0; i < PathC.size(); i++){
+		PATH* pptr = PathC[i];
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		if (stptr->GetType() != "PI"){
+			for (int j = 0; j < stptr->Clock_Length(); j++)
+				if (cbuffer_code.find(stptr->GetClockPath(j)) == cbuffer_code.end()){
+					cbuffer_code[stptr->GetClockPath(j)] = k;
+					cbuffer_decode[k] = stptr->GetClockPath(j);
+					k++;
+			}
+		}		
+		if (edptr->GetType() != "PO"){
+			for (int j = 0; j < edptr->Clock_Length(); j++)
+			if (cbuffer_code.find(edptr->GetClockPath(j)) == cbuffer_code.end()){
+				cbuffer_code[edptr->GetClockPath(j)] = k;
+				cbuffer_decode[k] = edptr->GetClockPath(j);
+				k++;
+			}
+		}
+	}
+	return k;
+}
+
 
 void CheckPathAttackbility(int year){
 		int aa, bb, cc, dd;

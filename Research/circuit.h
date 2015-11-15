@@ -12,13 +12,15 @@ void ReadCircuit(string filename);
 void ReadPath_l(string filename);
 //void ReadPath_s(string filename);
 void CalVertexWeight();
-void ChooseVertexWithGreedyMDS();
+void ChooseVertexWithGreedyMDS(int year);
 int HashAllClockBuffer();
 void GenerateSAT(string filename,int year);
 bool CallSatAndReadReport();
 void CheckPathAttackbility(int year);
 double CalQuality(int year);
 bool RefineResult(int year);
+void EstimateTimeEV(double year);
+void CalSolMines(double year, int p);
 
 class GATE;
 
@@ -143,6 +145,7 @@ private:
 	double setuptime;
 	double holdtime;
 	double clock_to_end;
+	double estime;
 	int weight;
 	bool attackable;
 	bool choose;
@@ -191,6 +194,8 @@ public:
 	bool CheckAttack(){ return attackable; }
 	bool Is_Chosen(){ return choose; }
 	void SetChoose(bool c){ choose = c; }
+	void SetEstimateTime(double t){ estime = t; }
+	double GetEstimateTime(){ return estime; }
 };
 
 

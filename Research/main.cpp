@@ -12,24 +12,28 @@ vector<PATH> PathR;
 double **EdgeA;
 double **EdgeB;
 double **cor;	//correlation coefficient
+int **conf;	//conflict soluation
 vector<PATH*> PathC;
 
 int main(int argc, char* argv[]){
-	if (argc < 3)
-		return 0;	
+	//if (argc < 3)
+	//	return 0;	
 	string filename;
-	filename = argv[1];
+	//filename = argv[1];
+	filename = "netcard.vg";
 	ReadCircuit(filename);
 	cout << "Reading Circuit Finished." << endl;
 	cout << "Longest Path File Name : " << endl;
-	filename = argv[2];
+	//filename = argv[2];
+	filename = "netcard.rpt";
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
 	cout << "Read Longest Path Finished."<<endl;	
 	//cout << "Shortest Path File Name : " << endl;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	int year = atoi(argv[3]);
+	//int year = atoi(argv[3]);	
+	int year = 5;
 	ReadAgingData();
 	CheckPathAttackbility(year);
 	
@@ -42,10 +46,13 @@ int main(int argc, char* argv[]){
 	EdgeA = new double*[ss];
 	EdgeB = new double*[ss];
 	cor = new double*[ss];
+	conf = new int*[ss];
+
 	for (int i = 0; i < ss; i++){
 		EdgeA[i] = new double[ss];
 		EdgeB[i] = new double[ss];
 		cor[i] = new double[ss];
+		conf[i] = new int[ss];
 	}
 	
 	srand(time(NULL));
@@ -67,8 +74,25 @@ int main(int argc, char* argv[]){
 			cor[i][j] = cor[j][i] = c;
 		}
 	}
-	
-	ChooseVertexWithGreedyMDS();
+	cout << "Initial Estimate Time" << endl;
+	EstimateTimeEV(year);
+	for (int i = 0; i < PathC.size(); i++)
+		cout << PathC[i]->GetEstimateTime() << endl;
+	system("pause");
+	cout << "Initial Estimate Soluation" << endl;
+	for (int i = 0; i < PathC.size(); i++){
+		CalSolMines(year, i);
+		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
+	}	
+	for (int i = 0; i < PathC.size(); i++){
+		//for (int j = 0; j<PathC.size(); j++)
+		//	cout << conf[i][j] << ' ';
+		//cout << endl;
+		cout << conf[i][i] << ' ';
+	}
+	system("pause");
+	cout << "Start Choosing Point" << endl;
+	ChooseVertexWithGreedyMDS(year);
 	string s;
 	fstream fileres;
 	while (PathC.size() > 0){
