@@ -559,12 +559,14 @@ void EstimateTimeEV(double year){
 		PATH* pptr = PathC[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		double pv = 0;		//	期望值
-		int solc = 0;
-		for (int k = 0; k < No_node;k++){		
+		double pv;		//	期望值
+		int solc;
+		for (int k = 0; k < No_node;k++){
+			pv = 0;
+			solc = 0;
 			if (stptr->GetType() == "PI"){
 				for (int j = 0; j < edptr->Clock_Length(); j++){
-					for (int x = 0; x < 4; x++){
+					for (int x = 1; x < 4; x++){
 						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
 							double st = year - ERROR, ed = year + ERROR, mid;
@@ -587,7 +589,7 @@ void EstimateTimeEV(double year){
 			}
 			else if (edptr->GetType() == "PO"){
 				for (int j = 0; j < stptr->Clock_Length(); j++){
-					for (int x = 0; x < 4; x++){
+					for (int x = 1; x < 4; x++){
 						stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
 							double st = year - ERROR, ed = year + ERROR, mid;
@@ -610,12 +612,33 @@ void EstimateTimeEV(double year){
 			}
 			else{
 				int branch = 0;
-				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
-				for (int j = 0; j < stptr->Clock_Length(); j++){
+				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
+					for (int x = 1; x < 4; x++){
+						stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+							double st = year - ERROR, ed = year + ERROR, mid;
+							while (ed - st>0.025){
+								mid = (st + ed) / 2;
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								if (EdgeA[k][i]>1)
+									Aging_P = AgingRate(WORST, mid);
+								if (Vio_Check(pptr, mid, Aging_P))
+									st = mid;
+								else
+									ed = mid;
+							}
+							pv += mid;
+							solc++;
+						}
+						stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
+					}
+					branch++;
+				}
+				for (int j = branch; j < stptr->Clock_Length(); j++){
 					for (int j2 = branch; j2 < edptr->Clock_Length(); j2++){
 						for (int x = 0; x < 4; x++){
 							for (int y = 0; y<4; y++){
-								if (j<branch && y != 0)	continue;
+								if (x == 0 && y == 0)	continue;
 								edptr->GetClockPath(j2)->SetDcc((AGINGTYPE)y);
 								stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 								if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
@@ -641,9 +664,7 @@ void EstimateTimeEV(double year){
 				}
 			}			
 		}
-		pptr->SetEstimateTime(pv / (double)solc);
-		cout << stptr->Clock_Length()*edptr->Clock_Length() * 3 * 3 + 1 << endl;
-		cout << "solc = " << solc << endl;
+		pptr->SetEstimateTime(pv / (double)solc);		
 	}
 }
 
@@ -710,7 +731,7 @@ double EstimateSolMines(int p){	//計算所有現有點在加入後少的解量之幾何平均
 			c++;
 		}
 	}
-	if (c == 0)
+	if (c == 0 || res<1)
 		return 0;
 	res = pow(res, 1 / (double)c);	
 	return res;
@@ -722,10 +743,7 @@ void CalSolMines(double year, int p){
 	tempsol.clear();
 	PATH *pptr = PathC[p];
 	GATE *stptr = pptr->Gate(0), *edptr = pptr->Gate(pptr->length()-1);
-	if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-		PATHSOL pp(NULL, NULL, DCC_NONE, DCC_NONE);
-		tempsol.push_back(pp);
-	}
+
 	if (stptr->GetType() == "PI"){
 		for (int i = 0; i < edptr->Clock_Length(); i++){
 			for (int x = 1; x < 4; x++){	//只考慮有放的狀況
@@ -752,13 +770,22 @@ void CalSolMines(double year, int p){
 	}
 	else{
 		int branch = 0;
-		while (branch<stptr->Clock_Length() && branch<edptr->Clock_Length() && stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
+		while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
+			for (int x = 1; x < 4; x++){
+				stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
+				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+					PATHSOL pp(stptr->GetClockPath(branch), NULL, (AGINGTYPE)x, DCC_NONE);
+					tempsol.push_back(pp);
+				}
+				stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
+			}
+			branch++;
+		}
 		for (int i = branch; i < stptr->Clock_Length(); i++){
 			for (int j = branch; j < edptr->Clock_Length(); j++){
 				for (int x = 0; x < 4; x++){
 					for (int y = 0; y < 4; y++){
-						if (x == 0 && y == 0)	continue;
-						if (i < branch && y != 0)	continue;						
+						if (x == 0 && y == 0)	continue;												
 						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
 						stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
@@ -773,69 +800,85 @@ void CalSolMines(double year, int p){
 		}
 	}	
 	conf[p][p] = tempsol.size();	//path p的解數 => conf[a][b]/conf[a][a]*conf[b][b] 之幾何平均 => 剩下解的平均比例
-	for (int i = p; i < PathC.size(); i++)
+	for (int i = p+1; i < PathC.size(); i++)
 		conf[p][i] = conf[i][p] = 0;
 
 	for (int f = 0; f < tempsol.size(); f++){	
 		for (int i = p + 1; i < No_node; i++){
+			int sc = 0;
 			pptr = PathC[i];
 			stptr = pptr->Gate(0);
 			edptr = pptr->Gate(pptr->length() - 1);			
 			if (stptr->GetType() == "PI"){
-				for (int i = 0; i < edptr->Clock_Length(); i++){
+				for (int k = 0; k < edptr->Clock_Length(); k++){
 					for (int x = 1; x < 4; x++){
-						edptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+						edptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
 							if (!CheckSolConflict(tempsol[f], pptr)){
 								conf[p][i]++;
 								conf[i][p]++;
 							}
+							sc++;
 						}
 						DCCrestore(tempsol[f]);
-						edptr->GetClockPath(i)->SetDcc(DCC_NONE);
+						edptr->GetClockPath(k)->SetDcc(DCC_NONE);
 					}
 				}
 			}
 			else if (edptr->GetType() == "PO"){
-				for (int i = 0; i < stptr->Clock_Length(); i++){
-					for (int x = 0; x < 4; x++){
-						stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+				for (int k = 0; k < stptr->Clock_Length(); k++){
+					for (int x = 1; x < 4; x++){
+						stptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
 							if (!CheckSolConflict(tempsol[f], pptr)){
 								conf[p][i]++;
 								conf[i][p]++;
 							}
+							sc++;
 						}
 						DCCrestore(tempsol[f]);
-						stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+						stptr->GetClockPath(k)->SetDcc(DCC_NONE);
 					}
 				}
 			}
 			else{
 				int branch = 0;
-				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch))	branch++;
-				for (int i = branch; i < stptr->Clock_Length(); i++){
+				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
+					for (int x = 1; x < 4; x++){
+						stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
+						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+							if (!CheckSolConflict(tempsol[f], pptr)){
+								conf[p][i]++;
+								conf[i][p]++;
+							}
+							sc++;
+						}
+						stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
+					}
+					branch++;
+				}
+				for (int k = branch; k < stptr->Clock_Length(); k++){
 					for (int j = branch; j < edptr->Clock_Length(); j++){
 						for (int x = 0; x < 4; x++){
 							for (int y = 0; y < 4; y++){
-								if (x == 0 && y == 0)	continue;
-								if (i < branch && y != 0)	continue;								
+								if (x == 0 && y == 0)	continue;								
 								edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
-								stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
+								stptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
 								if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){									
 									if (!CheckSolConflict(tempsol[f], pptr)){
 										conf[p][i]++;
 										conf[i][p]++;
 									}
+									sc++;
 								}
 								DCCrestore(tempsol[f]);
-								stptr->GetClockPath(i)->SetDcc(DCC_NONE);
+								stptr->GetClockPath(k)->SetDcc(DCC_NONE);
 								edptr->GetClockPath(j)->SetDcc(DCC_NONE);
 							}
 						}
 					}
 				}
-			}
+			}		
 		}
 	}		
 }
@@ -878,10 +921,7 @@ void ChooseVertexWithGreedyMDS(int year){
 				max = w;
 				maxi = i;
 			}
-		}
-		//cout << max << ',' << maxi << endl;
-		//int aa;
-		//cin >> aa;
+		}		
 		for (int i = 0; i < No_node; i++){
 			if (Check_Connect(maxi, i)	&& color[i]==1){
 				for (int j = 0; j < No_node; j++){
@@ -959,7 +999,7 @@ void CheckPathAttackbility(int year){
 		int branch = 1;		
 		if (stptr->GetType() == "PI"){
 			for (int j = 1; j < led && !chk; j++){
-				for (int x = 0; x <= 3; x++){
+				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year - ERROR)){
 						PathC.push_back(pptr);
 						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "PI+FF" << endl;
@@ -974,7 +1014,7 @@ void CheckPathAttackbility(int year){
 		}
 		else if (edptr->GetType() == "PO"){
 			for (int j = 1; j < lst && !chk; j++){
-				for (int x = 0; x <= 3; x++){
+				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR)){
 						PathC.push_back(pptr);
 						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+PO" << endl;
@@ -990,7 +1030,7 @@ void CheckPathAttackbility(int year){
 		while (branch < lst&&branch < led && !chk){			
 			if (stptr->GetClockPath(branch) != edptr->GetClockPath(branch))
 				break;
-			for (int x = 0; x <= 3;x++)
+			for (int x = 1; x <= 3;x++)
 				if (!Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){
 					PathC.push_back(pptr);
 					cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF(branch)" << endl;
@@ -1007,6 +1047,7 @@ void CheckPathAttackbility(int year){
 			for (int k = branch; k < led && !chk; k++){
 				for (int x = 0; x < 3 && !chk; x++){
 					for (int y = 0; y < 3; y++){
+						if (x == 0 && y == 0)	continue;
 						if (!Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year+ERROR) && Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
 							PathC.push_back(pptr);
 							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF" << endl;

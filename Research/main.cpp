@@ -16,24 +16,21 @@ int **conf;	//conflict soluation
 vector<PATH*> PathC;
 
 int main(int argc, char* argv[]){
-	//if (argc < 3)
-	//	return 0;	
+	if (argc < 3)
+		return 0;	
 	string filename;
-	//filename = argv[1];
-	filename = "netcard.vg";
+	filename = argv[1];	
 	ReadCircuit(filename);
 	cout << "Reading Circuit Finished." << endl;
 	cout << "Longest Path File Name : " << endl;
-	//filename = argv[2];
-	filename = "netcard.rpt";
+	filename = argv[2];	
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
 	cout << "Read Longest Path Finished."<<endl;	
 	//cout << "Shortest Path File Name : " << endl;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	//int year = atoi(argv[3]);	
-	int year = 5;
+	int year = atoi(argv[3]);	
 	ReadAgingData();
 	CheckPathAttackbility(year);
 	
@@ -76,21 +73,19 @@ int main(int argc, char* argv[]){
 	}
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);
-	for (int i = 0; i < PathC.size(); i++)
-		cout << PathC[i]->GetEstimateTime() << endl;
-	system("pause");
+	//for (int i = 0; i < PathC.size(); i++)
+	//	cout << PathC[i]->GetEstimateTime() << endl;	
 	cout << "Initial Estimate Soluation" << endl;
 	for (int i = 0; i < PathC.size(); i++){
-		CalSolMines(year, i);
+		CalSolMines(year, i);		
 		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
-	}	
-	for (int i = 0; i < PathC.size(); i++){
-		//for (int j = 0; j<PathC.size(); j++)
-		//	cout << conf[i][j] << ' ';
-		//cout << endl;
-		cout << conf[i][i] << ' ';
 	}
-	system("pause");
+	/*
+	for (int i = 0; i < PathC.size(); i++){
+		for (int j = 0; j < PathC.size(); j++)
+			cout << conf[i][j] << endl;		
+	}	
+	*/
 	cout << "Start Choosing Point" << endl;
 	ChooseVertexWithGreedyMDS(year);
 	string s;
