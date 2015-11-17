@@ -5,7 +5,7 @@
 #include "circuit.h"
 #include<stdlib.h>
 #define ERROR 1
-#define MARGIN 1.1
+#define MARGIN 1.0
 
 using namespace std;
 
@@ -556,14 +556,14 @@ inline double absl(double x){
 void EstimateTimeEV(double year){
 	int No_node = PathC.size();
 	for (int i = 0; i < No_node; i++){
+		cout << "NODE " << i + 1 << '/' << No_node << endl;
 		PATH* pptr = PathC[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		double pv;		//	期望值
-		int solc;
-		for (int k = 0; k < No_node;k++){
-			pv = 0;
-			solc = 0;
+		double max = 0;
+		for (int k = 0; k < No_node;k++){			
+			double pv = 0;		//	期望值&解 (path i的, 由path k推得)
+			int solc = 0;
 			if (stptr->GetType() == "PI"){
 				for (int j = 0; j < edptr->Clock_Length(); j++){
 					for (int x = 1; x < 4; x++){
@@ -572,7 +572,7 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.025){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error,從第k個path點推到第i個path 找第i個path的期望值
 								if (EdgeA[k][i]>1)
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
@@ -662,9 +662,12 @@ void EstimateTimeEV(double year){
 						}
 					}
 				}
-			}			
+			}
+			pv /= (double)solc;
+			if (abs(pv - (double)year) > abs(max-(double)year))
+				max = pv;
 		}
-		pptr->SetEstimateTime(pv / (double)solc);		
+		pptr->SetEstimateTime(max);
 	}
 }
 
