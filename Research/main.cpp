@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
 	//cout << "Read Shortest Path Finished." << endl;	
 	int year = atoi(argv[3]);	
 	ReadAgingData();
-	CheckPathAttackbility(year);
+	CheckPathAttackbility(year);	//計算最多可改點的margin
 	
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
@@ -83,14 +83,16 @@ int main(int argc, char* argv[]){
 	/*
 	for (int i = 0; i < PathC.size(); i++){
 		for (int j = 0; j < PathC.size(); j++)
-			cout << conf[i][j] << endl;		
+			cout << conf[i][j] << ' ';
+		cout << endl;
 	}	
 	*/
 	cout << "Start Choosing Point" << endl;
 	ChooseVertexWithGreedyMDS(year);
 	string s;
 	fstream fileres;
-	while (PathC.size() > 0){
+	bool cont = true;
+	while (cont){		//用learning來調整參數比重=>以最後的差距做為reward=>無解設為多少? => 隨機選點 
 		cout << PathC.size() << endl;
 		GenerateSAT("sat.cnf", year);
 		CallSatAndReadReport();		
@@ -99,12 +101,7 @@ int main(int argc, char* argv[]){
 		fileres.close();
 		if (s.find("UNSAT") == string::npos)
 			break;
-		for (int i = 0; i < PathC.size(); i++){
-			if (PathC[i]->Is_Chosen()){
-				PathC[i]->SetChoose(false);
-				break;
-			}
-		}
+		cont = false;
 	}
 	cout << "Q = " << CalQuality(year) << endl;
 	cout << "Try to Refine Result : " << endl;

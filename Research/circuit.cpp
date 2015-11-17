@@ -5,7 +5,7 @@
 #include "circuit.h"
 #include<stdlib.h>
 #define ERROR 1
-#define MARGIN 1.0
+#define MARGIN 1.1
 
 using namespace std;
 
@@ -914,7 +914,7 @@ void ChooseVertexWithGreedyMDS(int year){
 				continue;
 			double w = 0;
 			w += EstimateAddTimes(year, i);
-			w += EstimateSolMines(i);
+			w += 2*EstimateSolMines(i);
 			if (degtot>0)
 				w += (double)degree[i] / (double)degtot;
 			if (w>max){
