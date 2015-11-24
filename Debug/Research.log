@@ -1,28 +1,41 @@
-﻿已經開始建置於 2015/11/17 下午 05:13:10。
-     1>節點 2 (Build 目標) 上的專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj"。
+﻿已經開始建置於 2015/11/24 上午 08:50:12。
+     1>節點 2 (Build 目標) 上的專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj"。
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\circuit.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\circuit.cpp research\main.cpp
+         main.cpp
+     1>research\main.cpp(39): warning C4018: '>' : signed/unsigned 不相符
+     1>research\main.cpp(66): warning C4244: '引數' : 將 'time_t' 轉換為 'unsigned int'，由於類型不同，可能導致資料遺失
+     1>research\main.cpp(90): warning C4018: '<' : signed/unsigned 不相符
          circuit.cpp
-     1>research\circuit.cpp(676): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(731): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(806): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(809): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(987): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(995): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1074): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1214): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1241): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1251): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1253): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1279): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(687): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(699): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(756): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(831): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(834): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(936): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(942): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(958): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(967): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1019): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1026): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1032): warning C4018: '>=' : signed/unsigned 不相符
+     1>research\circuit.cpp(1100): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1108): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1196): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1336): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1363): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1373): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1375): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1401): warning C4018: '<' : signed/unsigned 不相符
+         正在產生程式碼...
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
          Debug\circuit.obj
          Debug\main.obj
          Debug\test.obj
-         Research.vcxproj -> C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe
-     1>專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj" (Build 目標) 建置完成。
+         Research.vcxproj -> C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe
+     1>專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj" (Build 目標) 建置完成。
 
 建置成功。
 
-經過時間 00:00:02.02
+經過時間 00:00:01.50

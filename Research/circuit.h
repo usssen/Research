@@ -12,11 +12,11 @@ void ReadCircuit(string filename);
 void ReadPath_l(string filename);
 //void ReadPath_s(string filename);
 void CalVertexWeight();
-void ChooseVertexWithGreedyMDS(int year);
+bool ChooseVertexWithGreedyMDS(int year,double pre_rvalue);
 int HashAllClockBuffer();
 void GenerateSAT(string filename,int year);
 bool CallSatAndReadReport();
-void CheckPathAttackbility(int year);
+void CheckPathAttackbility(int year,double margin,bool flag);
 double CalQuality(int year);
 bool RefineResult(int year);
 void EstimateTimeEV(double year);
@@ -146,7 +146,8 @@ private:
 	double holdtime;
 	double clock_to_end;
 	double estime;
-	int weight;
+	double psd;	//Ãþ¼Ð·Ç®t
+	//int weight;
 	bool attackable;
 	bool choose;
 	PATHTYPE type;
@@ -185,8 +186,8 @@ public:
 	double GetCTE(){ return clock_to_end; }
 	double GetCTH(){ return timing[0].in_time(); }
 	double GetAT(){ return timing[timing.size()-1].in_time(); }
-	void CalWeight();
-	int GetWeight(){ return weight; }
+	//void CalWeight();
+	//int GetWeight(){ return weight; }
 	void SetType(PATHTYPE t){ type = t; }
 	PATHTYPE GetType(){ return type; }
 	int length(){ return gate_list.size(); }
@@ -196,6 +197,8 @@ public:
 	void SetChoose(bool c){ choose = c; }
 	void SetEstimateTime(double t){ estime = t; }
 	double GetEstimateTime(){ return estime; }
+	void SetPSD(double t) { psd = t; }
+	double GetPSD(){ return psd; }
 };
 
 

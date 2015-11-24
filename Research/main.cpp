@@ -32,8 +32,19 @@ int main(int argc, char* argv[]){
 	//cout << "Read Shortest Path Finished." << endl;	
 	int year = atoi(argv[3]);	
 	ReadAgingData();
-	CheckPathAttackbility(year);	//計算最多可改點的margin
-	
+	double MARGIN;
+	int MAX_pn = 0;
+	for (double mm = 1.0; mm < 1.2; mm += 0.01){
+		CheckPathAttackbility(year, mm, false);	//計算最多可改點的period乘數
+		if (PathC.size()>MAX_pn){
+			MARGIN = mm;
+			MAX_pn = PathC.size();
+		}
+		PathC.clear();
+	}
+	CheckPathAttackbility(year, MARGIN, true);
+	cout << "Max margin = " << MARGIN << endl;
+
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
@@ -87,13 +98,11 @@ int main(int argc, char* argv[]){
 		cout << endl;
 	}	
 	*/
-	cout << "Start Choosing Point" << endl;
-	ChooseVertexWithGreedyMDS(year);
+	//cout << "Start Choosing Point" << endl;	
 	string s;
 	fstream fileres;
 	bool cont = true;
-	while (cont){		//用learning來調整參數比重=>以最後的差距做為reward=>無解設為多少? => 隨機選點 
-		cout << PathC.size() << endl;
+	while (ChooseVertexWithGreedyMDS(year, 1.0)){		//回傳false代表沒有domination set可選(改選非domination set?) 		
 		GenerateSAT("sat.cnf", year);
 		CallSatAndReadReport();		
 		fileres.open("temp.sat");
@@ -101,7 +110,6 @@ int main(int argc, char* argv[]){
 		fileres.close();
 		if (s.find("UNSAT") == string::npos)
 			break;
-		cont = false;
 	}
 	cout << "Q = " << CalQuality(year) << endl;
 	cout << "Try to Refine Result : " << endl;
