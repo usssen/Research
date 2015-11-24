@@ -4,8 +4,8 @@
 #include<math.h>
 #include "circuit.h"
 #include<stdlib.h>
+#include<algorithm>
 #define ERROR 1
-#define MARGIN 1.0
 
 using namespace std;
 
@@ -257,7 +257,7 @@ void ReadPath_l(string filename){
 		spptr->Setflag();
 		epptr->Setflag();
 		p->SetType(LONG);
-		p->CalWeight();
+		//p->CalWeight();
 		PathR.push_back(*p);
 		sp = "";		
 	}	
@@ -521,7 +521,7 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		return false;
 	}
 }
-
+/*
 void PATH::CalWeight(){
 	GATE* stptr = gate_list[0];
 	GATE* edptr = gate_list[gate_list.size() - 1];
@@ -533,6 +533,7 @@ void PATH::CalWeight(){
 	}
 	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
 }
+*/
 double thershold = 0.8;
 double t_slope = 0.95;
 
@@ -561,8 +562,10 @@ void EstimateTimeEV(double year){
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		double max = 0;
+		double max2 = 0;
 		for (int k = 0; k < No_node;k++){			
 			double pv = 0;		//	期望值&解 (path i的, 由path k推得)
+			double pv2 = 0;		//	類標準差 -> sigma(xi - avg)^2 /N  用給定時間代替avg
 			int solc = 0;
 			if (stptr->GetType() == "PI"){
 				for (int j = 0; j < edptr->Clock_Length(); j++){
@@ -581,6 +584,7 @@ void EstimateTimeEV(double year){
 									ed = mid;
 							}
 							pv += mid;
+							pv2 += (mid - year)*(mid - year);
 							solc++;
 						}
 						edptr->GetClockPath(j)->SetDcc(DCC_NONE);
@@ -604,6 +608,7 @@ void EstimateTimeEV(double year){
 									ed = mid;
 							}
 							pv += mid;
+							pv2 += (mid - year)*(mid - year);
 							solc++;
 						}
 						stptr->GetClockPath(j)->SetDcc(DCC_NONE);
@@ -628,6 +633,7 @@ void EstimateTimeEV(double year){
 									ed = mid;
 							}
 							pv += mid;
+							pv2 += (mid - year)*(mid - year);
 							solc++;
 						}
 						stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
@@ -654,6 +660,7 @@ void EstimateTimeEV(double year){
 											ed = mid;
 									}
 									pv += mid;
+									pv2 += (mid - year)*(mid - year);
 									solc++;
 								}
 								stptr->GetClockPath(j)->SetDcc(DCC_NONE);
@@ -664,10 +671,14 @@ void EstimateTimeEV(double year){
 				}
 			}
 			pv /= (double)solc;
-			if (abs(pv - (double)year) > abs(max-(double)year))
+			pv2 /= (double)solc;
+			if (absl(pv - (double)year) > absl(max-(double)year))
 				max = pv;
+			if (pv2 > max2)
+				max2 = pv2;
 		}
 		pptr->SetEstimateTime(max);
+		pptr->SetPSD(max2);
 	}
 }
 
@@ -675,11 +686,25 @@ double EstimateAddTimes(double year,int p){	//p是要加入的點
 	double max = 0;
 	for (int i = 0; i < PathC.size(); i++){
 		if (PathC[i]->Is_Chosen() && absl(year - PathC[i]->GetEstimateTime())>max)
-			max = abs(year - PathC[i]->GetEstimateTime());
+			max = absl(year - PathC[i]->GetEstimateTime());
 	}
 	if (absl(year - PathC[p]->GetEstimateTime()) > max)
 		return absl(year - PathC[p]->GetEstimateTime()) - max;		//傳回的是加入p後會差多少 => 如果比原本的還小就是0 不然就回傳差值
 	return 0.0;
+}
+
+double EstimatePSD(int p){
+	double max = 0;
+	double newmax = PathC[p]->GetPSD();
+	for (int i = 0; i < PathC.size(); i++){
+		if (PathC[i]->Is_Chosen() && PathC[i]->GetPSD()>max){		//同樣 傳回類標準差加入前後的最大值差 => 比原本小即0
+			max = PathC[i]->GetPSD();
+		}
+	}
+	if (max > newmax)
+		return 0.0;
+	
+	return newmax - max;
 }
 
 struct PATHSOL{
@@ -886,66 +911,152 @@ void CalSolMines(double year, int p){
 	}		
 }
 
-void ChooseVertexWithGreedyMDS(int year){
+struct PN_W{
+	int pn;
+	double w;
+	PN_W(int n, double ww) :pn(n), w(ww){}
+};
+
+bool PN_W_comp(PN_W a, PN_W b){
+	if (a.w > b.w)
+		return true;
+	return false;
+}
+
+class HASHTABLE{
+private:
+	bool* exist;
+	bool** choose;
+	unsigned size;
+public:
+	HASHTABLE(unsigned s1,unsigned s2){	//s1是位元數
+		size = s1;
+		exist = new bool[1 << s1];
+		choose = new bool*[1 << s1];
+		for (int i = 0; i < (1<<s1); i++){
+			exist[i] = false;
+			choose[i] = new bool[s2];
+		}
+	}
+	unsigned CalKey(){
+		unsigned key = 0x0;
+		unsigned temp = 0x0;
+		for (int i = 0; i < PathC.size(); i++){
+			temp <<= 1;
+			if (PathC[i]->Is_Chosen())
+				temp++;
+			if ((i+1)%size == 0){
+				key ^= temp;
+				temp = 0x0;
+			}			
+		}
+		key ^= temp;
+		return key;
+	}
+	bool Exist(){
+		unsigned key = CalKey();		
+		if (!exist[key])
+			return false;
+		for (int i = 0; i < PathC.size(); i++){
+			if (PathC[i]->Is_Chosen() != choose[key][i])
+				return false;
+		}
+		return true;
+	}
+	void PutNowStatus(){
+		unsigned key = CalKey();
+		exist[key] = true;
+		for (int i = 0; i < PathC.size(); i++)
+			choose[key][i] = PathC[i]->Is_Chosen();
+	}
+};
+
+
+bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
+	//static double p[4] = { 1.0, 1.0, 1.0, 1.0 };
+	//static double pre_mvalue = 0.0;
 	int No_node = PathC.size();
-	int* degree = new int[No_node];
-	int degtot;
-	for (int i = 0; i < No_node; i++){
-		PathC[i]->SetChoose(false);
-		degree[i] = 0;
-		for (int j = 0; j < No_node; j++){
-			if (Check_Connect(i, j))
-				degree[i]++;
-		}		
+	static bool refresh = true;
+	static int *degree = new int[No_node], *color = new int[No_node];
+	static HASHTABLE hashp(16, PathC.size());
+	if (pre_rvalueb < 0){	//<0代表上次的無解,僅做加入hash
+		refresh = true;
+		hashp.PutNowStatus();
+		return false;
 	}
-	
-	int* color = new int[No_node];
+	if (refresh){
+		//degree = new int[No_node];
+		//color = new int[No_node];
+		for (int i = 0; i < No_node; i++){
+			PathC[i]->SetChoose(false);
+			degree[i] = 0;
+			color[i] = 1;
+			for (int j = 0; j < No_node; j++){
+				if (Check_Connect(i, j))
+					degree[i]++;
+			}
+		}
+		refresh = false;
+	}
+	int mini;
+	//double min;
+	int w_point = 0;
 	for (int i = 0; i < No_node; i++)
-		color[i] = 1;	//初始全白點
-	bool chk = true;	
-	
-	while (chk){
-		int maxi;
-		double max;
-		degtot = 0;
-		for (int i = 0; i < No_node; i++)
-			if (color[i] != -1)
-				degtot += degree[i];
-		max = -100;
-		for (int i = 0; i < No_node; i++){
-			if (color[i] == -1)	//黑的不選
-				continue;
-			double w = 0;
-			w += EstimateAddTimes(year, i);
-			w += 2*EstimateSolMines(i);
-			if (degtot>0)
-				w += (double)degree[i] / (double)degtot;
-			if (w>max){
-				max = w;
-				maxi = i;
-			}
-		}		
-		for (int i = 0; i < No_node; i++){
-			if (Check_Connect(maxi, i)	&& color[i]==1){
-				for (int j = 0; j < No_node; j++){
-					if (Check_Connect(i, j) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
-						degree[j]--;
-				}
-				color[i] = 0;	//被選點的隔壁改為灰
-				if (color[maxi] == 1)	//被選點改為黑,旁邊的degree -1
-					degree[i]--;
-			}
-		}		
-		PathC[maxi]->SetChoose(true);
-		degree[maxi] = 0;
-		color[maxi] = -1;	//被選點改為黑
-		chk = false;
-		for (int i = 0; i < No_node; i++){
-			if (color[i] == 1){
-				chk = true;				
-			}
-		}		
+		if (color[i] == 1)
+			w_point++;
+	vector<PN_W> cand;
+	for (int i = 0; i < No_node; i++){
+		if (color[i] == -1)	//黑的不選
+			continue;
+		PathC[i]->SetChoose(true);
+		if (hashp.Exist()){
+			PathC[i]->SetChoose(false);
+			continue;
+		}
+		PathC[i]->SetChoose(false);
+		double w = 0;		//期望此值能夠算出和給定值之差
+		w += EstimateAddTimes(year, i);	//加入i點後增加的誤差值
+		w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
+		w += EstimatePSD(i);		//加入i點後增加的"類標準差"
+		w -= (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
+		cand.push_back(PN_W(i, w));
 	}
+	if (cand.size() == 0){
+		refresh = true;
+		hashp.PutNowStatus();
+		return false;	//false代表這次的點不要做sat
+	}
+	sort(cand.begin(), cand.end(), PN_W_comp);
+	int ii = 0;
+	while (ii < cand.size() - 1 && rand() % 10 == 9){	//10%的機會跳到較差的解
+		ii++;
+	}
+	mini = cand[ii].pn;
+	//pre_mvalue = min;
+	for (int i = 0; i < No_node; i++){
+		if (Check_Connect(mini, i) && color[i] == 1){
+			for (int j = 0; j < No_node; j++){
+				if (Check_Connect(i, j) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
+					degree[j]--;
+			}
+			color[i] = 0;	//被選點的隔壁改為灰
+			if (color[mini] == 1)	//被選點改為黑,旁邊的degree -1
+				degree[i]--;
+		}
+	}
+	PathC[mini]->SetChoose(true);
+	degree[mini] = 0;
+	color[mini] = -1;	//被選點改為黑
+	/*
+	refresh = true;
+	for (int i = 0; i < No_node; i++){
+		if (color[i] == 1){
+			refresh = false;
+			break;
+		}
+	}
+	*/
+	return true;
 }
 
 map<GATE*, int> cbuffer_code;
@@ -980,18 +1091,18 @@ int HashAllClockBuffer(){
 }
 
 
-void CheckPathAttackbility(int year){
+void CheckPathAttackbility(int year,double margin,bool flag){
 		int aa, bb, cc, dd;
 		aa = bb = cc = dd = 0;
 		period = 0.0;
 		for (int i = 0; i < PathR.size(); i++){
 			double pp = (1.0 + AgingRate(NORMAL, year))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0))+(1.0+AgingRate(FF,year))*(PathR[i].Out_time(0)-PathR[i].In_time(0))+ (1.0+AgingRate(DCC_NONE,year))*(PathR[i].GetCTH() - PathR[i].GetCTE());
-			pp *= MARGIN;
+			pp *= margin;
 			if (pp>period)
 				period = pp;
 		}
-		cout << period << endl;
-		//cin >> aa;
+		if (flag)
+			cout << period << endl;		
 	for (int i = 0; i < PathR.size(); i++){		
 		bool chk = false;
 		PATH* pptr = &PathR[i];		
@@ -1005,8 +1116,10 @@ void CheckPathAttackbility(int year){
 				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year - ERROR)){
 						PathC.push_back(pptr);
-						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "PI+FF" << endl;
-						cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
+						if (flag){
+							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "PI+FF" << endl;
+							cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
+						}
 						aa++;
 						chk = true;
 						pptr->SetAttack(true);
@@ -1020,8 +1133,10 @@ void CheckPathAttackbility(int year){
 				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR)){
 						PathC.push_back(pptr);
-						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+PO" << endl;
-						cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
+						if (flag){
+							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+PO" << endl;
+							cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
+						}
 						bb++;
 						chk = true;
 						pptr->SetAttack(true);
@@ -1036,8 +1151,10 @@ void CheckPathAttackbility(int year){
 			for (int x = 1; x <= 3;x++)
 				if (!Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){
 					PathC.push_back(pptr);
-					cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF(branch)" << endl;
-					cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << endl;
+					if (flag){
+						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF(branch)" << endl;
+						cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << endl;
+					}
 					cc++;
 					chk = true;
 					pptr->SetAttack(true);
@@ -1053,8 +1170,10 @@ void CheckPathAttackbility(int year){
 						if (x == 0 && y == 0)	continue;
 						if (!Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year+ERROR) && Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
 							PathC.push_back(pptr);
-							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF" << endl;
-							cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << ' ' << y << endl;
+							if (flag){
+								cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF" << endl;
+								cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << ' ' << y << endl;
+							}
 							dd++;
 							chk = true;
 							pptr->SetAttack(true);
@@ -1065,7 +1184,8 @@ void CheckPathAttackbility(int year){
 			}
 		}
 	}
-	cout << aa << ' ' << bb << ' ' << cc << ' ' << dd << endl;
+	if (flag)
+		cout << aa << ' ' << bb << ' ' << cc << ' ' << dd << endl;
 	return;
 }
 

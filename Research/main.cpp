@@ -19,21 +19,34 @@ int main(int argc, char* argv[]){
 	if (argc < 3)
 		return 0;	
 	string filename;
-	filename = argv[1];	
+	filename = argv[1];
+	//filename = "test.vg";
 	ReadCircuit(filename);
 	cout << "Reading Circuit Finished." << endl;
-	cout << "Longest Path File Name : " << endl;
-	filename = argv[2];	
+	filename = argv[2];
+	//filename = "testp.rpt";
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
 	cout << "Read Longest Path Finished."<<endl;	
 	//cout << "Shortest Path File Name : " << endl;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	int year = atoi(argv[3]);	
+	int year = atoi(argv[3]);
+	//int year = 5;
 	ReadAgingData();
-	CheckPathAttackbility(year);	//計算最多可改點的margin
-	
+	double MARGIN;
+	int MAX_pn = 0;
+	for (double mm = 1.0; mm < 1.2; mm += 0.01){
+		CheckPathAttackbility(year, mm, false);	//計算最多可改點的period乘數
+		if (PathC.size()>MAX_pn){
+			MARGIN = mm;
+			MAX_pn = PathC.size();
+		}
+		PathC.clear();
+	}
+	CheckPathAttackbility(year, MARGIN, true);
+	cout << "Max margin = " << MARGIN << endl;
+
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
@@ -72,50 +85,63 @@ int main(int argc, char* argv[]){
 		}
 	}
 	cout << "Initial Estimate Time" << endl;
-	EstimateTimeEV(year);
-	//for (int i = 0; i < PathC.size(); i++)
-	//	cout << PathC[i]->GetEstimateTime() << endl;	
+	EstimateTimeEV(year);	
 	cout << "Initial Estimate Soluation" << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		CalSolMines(year, i);		
 		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
 	}
-	/*
-	for (int i = 0; i < PathC.size(); i++){
-		for (int j = 0; j < PathC.size(); j++)
-			cout << conf[i][j] << ' ';
-		cout << endl;
-	}	
-	*/
-	cout << "Start Choosing Point" << endl;
-	ChooseVertexWithGreedyMDS(year);
+	bool* bestnode = new bool[PathC.size()];
+	double bestq = 0.0;
 	string s;
 	fstream fileres;
-	bool cont = true;
-	while (cont){		//用learning來調整參數比重=>以最後的差距做為reward=>無解設為多少? => 隨機選點 
-		cout << PathC.size() << endl;
-		GenerateSAT("sat.cnf", year);
-		CallSatAndReadReport();		
-		fileres.open("temp.sat");
-		getline(fileres, s);
-		fileres.close();
-		if (s.find("UNSAT") == string::npos)
-			break;
-		cont = false;
+	for (int tryi = 0; tryi < atoi(argv[4]); tryi++){
+		if (tryi>0)
+			ChooseVertexWithGreedyMDS(year, -1.0);
+		int co = 0;
+		while (true){
+			cout << tryi + 1 << " - " << co++ << endl;
+			if (!ChooseVertexWithGreedyMDS(year, 1.0))
+				break;
+			GenerateSAT("sat.cnf", year);
+			CallSatAndReadReport();
+			fileres.open("temp.sat");
+			getline(fileres, s);
+			fileres.close();
+			if (s.find("UNSAT") != string::npos)
+				break;
+			double Q = CalQuality(year);
+			if (abs(Q - (double)year) < abs(bestq - (double)year)){
+				for (int i = 0; i < PathC.size(); i++)
+					bestnode[i] = PathC[i]->Is_Chosen();
+				bestq = Q;
+			}
+			//cout << "Q = " << CalQuality(year) << endl;
+			//cout << "Try to Refine Result : " << endl;
+			for (int i = 1; i <= 5; i++){
+				if (!RefineResult(year)){
+					//cout << "Result is in limit!" << endl;
+					break;
+				}
+				//cout << "Time " << i << " : " << endl;
+				if (!CallSatAndReadReport()){
+					//cout << "Can't Refine Anymore" << endl;
+					break;
+				}
+				//cout << "Q = " << CalQuality(year) << endl;
+				Q = CalQuality(year);
+				if (abs(Q - (double)year) < abs(bestq - (double)year)){
+					for (int i = 0; i < PathC.size(); i++)
+						bestnode[i] = PathC[i]->Is_Chosen();
+					bestq = Q;
+				}
+			}
+		}
 	}
+	for (int i = 0; i < PathC.size(); i++)
+		PathC[i]->SetChoose(bestnode[i]);
+	GenerateSAT("sat.cnf", year);
+	CallSatAndReadReport();
 	cout << "Q = " << CalQuality(year) << endl;
-	cout << "Try to Refine Result : " << endl;
-	for (int i = 1; i <= 5; i++){
-		if (!RefineResult(year)){
-			cout << "Result is in limit!" << endl;
-			break;
-		}
-		cout << "Time " << i << " : " << endl;
-		if (!CallSatAndReadReport()){
-			cout << "Can't Refine Anymore" << endl;
-			break;
-		}
-		cout << "Q = " << CalQuality(year) << endl;
-	}	
 	return 0;
 }
