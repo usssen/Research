@@ -573,7 +573,7 @@ void EstimateTimeEV(double year){
 						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
 							double st = year - ERROR, ed = year + ERROR, mid;
-							while (ed - st>0.025){
+							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
 								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error,從第k個path點推到第i個path 找第i個path的期望值
 								if (EdgeA[k][i]>1)
@@ -597,7 +597,7 @@ void EstimateTimeEV(double year){
 						stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
 							double st = year - ERROR, ed = year + ERROR, mid;
-							while (ed - st>0.025){
+							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
 								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
 								if (EdgeA[k][i]>1)
@@ -622,7 +622,7 @@ void EstimateTimeEV(double year){
 						stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
 							double st = year - ERROR, ed = year + ERROR, mid;
-							while (ed - st>0.025){
+							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
 								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
 								if (EdgeA[k][i]>1)
@@ -649,7 +649,7 @@ void EstimateTimeEV(double year){
 								stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 								if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
 									double st = year - ERROR, ed = year + ERROR, mid;
-									while (ed - st>0.025){
+									while (ed - st>0.0001){
 										mid = (st + ed) / 2;
 										double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
 										if (EdgeA[k][i]>1)
@@ -978,6 +978,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	int No_node = PathC.size();
 	static bool refresh = true;
 	static int *degree = new int[No_node], *color = new int[No_node];
+	static bool *nochoose = new bool[No_node];
 	static HASHTABLE hashp(16, PathC.size());
 	if (pre_rvalueb < 0){	//<0代表上次的無解,僅做加入hash
 		refresh = true;
@@ -991,6 +992,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 			PathC[i]->SetChoose(false);
 			degree[i] = 0;
 			color[i] = 1;
+			nochoose[i] = false;
 			for (int j = 0; j < No_node; j++){
 				if (Check_Connect(i, j))
 					degree[i]++;
@@ -1008,9 +1010,12 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	for (int i = 0; i < No_node; i++){
 		if (color[i] == -1)	//黑的不選
 			continue;
+		if (nochoose[i])
+			continue;
 		PathC[i]->SetChoose(true);
 		if (hashp.Exist()){
 			PathC[i]->SetChoose(false);
+			nochoose[i] = true;
 			continue;
 		}
 		PathC[i]->SetChoose(false);
@@ -1193,7 +1198,7 @@ void GenerateSAT(string filename,int year){
 	int ct = 0;
 	for (int i = 0; i < PathC.size(); i++)		
 		if (PathC[i]->Is_Chosen())	ct++;		
-	cout << ct << endl;
+		cout << ct << " Paths be chosen." << endl;
 	fstream file;
 	fstream temp;	
 	file.open(filename.c_str(), ios::out);
@@ -1365,16 +1370,16 @@ bool CallSatAndReadReport(){
 }
 
 
-double CalQuality(int year){	//沒被選到的path提早出錯 -> 取差最遠的放入SAT重解	
+double CalQuality(int year){
 
-	double worst_all = 0;	
+	double worst_all = (double)year;
 	for (int i = 0; i < PathC.size(); i++){
-		double best_case = 10000;
+		double earlist_case = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
-			if (!PathC[j]->Is_Chosen())			
-				continue;			
+			//if (!PathC[j]->Is_Chosen())				//計算時從全部可攻擊點(不是僅算被選點)
+			//	continue;			
 			double st = 1.0, ed = 10.0, mid;
-			while (ed - st > 0.025){
+			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
 				if (EdgeA[i][j]>1)
@@ -1384,11 +1389,11 @@ double CalQuality(int year){	//沒被選到的path提早出錯 -> 取差最遠的放入SAT重解
 				else
 					ed = mid;
 			}
-			if (mid < best_case)
-				best_case = mid;			
+			if (mid < earlist_case)
+				earlist_case = mid;				//最早的點(因為發生錯誤最早在此時)
 		}
-		if (worst_all < best_case)
-			worst_all = best_case;
+		if (absl((double)year - worst_all) < absl((double)year - earlist_case))		//離給定時間最遠的為最差的狀況
+			worst_all = earlist_case;
 	}
 	return worst_all;
 }
@@ -1397,18 +1402,18 @@ bool RefineResult(int year){
 	double early = 10000.0;
 	int earlyp = -1;
 	for (int i = 0; i < PathR.size(); i++){
-		if (!PathR[i].Is_Chosen() && !Vio_Check(&PathR[i], (double)year - ERROR, AgingRate(WORST, year - ERROR))){
+		if (!Vio_Check(&PathR[i], (double)year - ERROR, AgingRate(WORST, year - ERROR))){	//!PathR[i].Is_Chosen() && 全部都check找最差的
 			if (PathR[i].CheckAttack())
 				cout << "*";
-			cout << i << ' ';
-			double st = 1.0, ed = (double)year - ERROR, mid;
-			while (ed - st>0.025){
+			double st = 1.0, ed = 10, mid;
+			while (ed - st>0.0001){
 				mid = (st + ed) / 2;
 				if (Vio_Check(&PathR[i], mid, AgingRate(WORST, mid)))
 					st = mid;
 				else
 					ed = mid;
 			}
+			cout << i << " = " << mid << ' ';
 			if (early > mid){
 				early = mid;
 				earlyp = i;
@@ -1418,7 +1423,7 @@ bool RefineResult(int year){
 	if (earlyp < 0)
 		return false;
 	cout << endl;
-	cout << earlyp << endl;
+	//cout << earlyp << endl;
 	fstream file;
 	file.open("sat.cnf", ios::out | ios::app);
 	if (!file)

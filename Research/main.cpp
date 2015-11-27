@@ -92,7 +92,7 @@ int main(int argc, char* argv[]){
 		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
 	}
 	bool* bestnode = new bool[PathC.size()];
-	double bestq = 0.0;
+	double bestq = 0;
 	string s;
 	fstream fileres;
 	for (int tryi = 0; tryi < atoi(argv[4]); tryi++){
@@ -133,15 +133,26 @@ int main(int argc, char* argv[]){
 				if (abs(Q - (double)year) < abs(bestq - (double)year)){
 					for (int i = 0; i < PathC.size(); i++)
 						bestnode[i] = PathC[i]->Is_Chosen();
-					bestq = Q;
+					bestq = Q;					
 				}
 			}
 		}
 	}
+	
+	cout << "Start Output Best Result." << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);
 	GenerateSAT("sat.cnf", year);
 	CallSatAndReadReport();
-	cout << "Q = " << CalQuality(year) << endl;
+	do{
+		double Q = CalQuality(year);
+		cout << "Q = " << Q << endl;
+		if (abs(Q - (double)year) < abs(bestq - (double)year))
+			bestq = Q;
+		if (!RefineResult(year))
+			break;
+	} while (CallSatAndReadReport());
+	RefineResult(year);
+	cout << "BEST Q = " << bestq << endl;
 	return 0;
 }
