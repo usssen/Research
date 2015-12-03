@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
 					bestnode[i] = PathC[i]->Is_Chosen();
 				bestq = Q;
 			}
-			//cout << "Q = " << CalQuality(year) << endl;
+			cout << "Q = " << Q << endl;
 			//cout << "Try to Refine Result : " << endl;
 			for (int i = 1; i <= 5; i++){
 				if (!RefineResult(year)){
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]){
 					//cout << "Can't Refine Anymore" << endl;
 					break;
 				}
-				//cout << "Q = " << CalQuality(year) << endl;
+				cout << "Q = " << Q << endl;
 				Q = CalQuality(year);
 				if (abs(Q - (double)year) < abs(bestq - (double)year)){
 					for (int i = 0; i < PathC.size(); i++)

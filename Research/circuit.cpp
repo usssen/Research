@@ -1020,7 +1020,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 		}
 		PathC[i]->SetChoose(false);
 		double w = 0;		//期望此值能夠算出和給定值之差
-		w += EstimateAddTimes(year, i);	//加入i點後增加的誤差值
+		w += 3*EstimateAddTimes(year, i);	//加入i點後增加的誤差值
 		w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
 		w += EstimatePSD(i);		//加入i點後增加的"類標準差"
 		w -= (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
@@ -1033,7 +1033,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	}
 	sort(cand.begin(), cand.end(), PN_W_comp);
 	int ii = 0;
-	while (ii < cand.size() - 1 && rand() % 10 == 9){	//10%的機會跳到較差的解
+	while (ii < cand.size() - 1 && (rand() % 10) >= 9){	//10%的機會跳到較差的解
 		ii++;
 	}
 	mini = cand[ii].pn;
