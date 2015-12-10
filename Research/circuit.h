@@ -21,6 +21,7 @@ double CalQuality(int year);
 bool RefineResult(int year);
 void EstimateTimeEV(double year);
 void CalSolMines(double year, int p);
+void ReadCpInfo(string filename);
 
 class GATE;
 
@@ -150,6 +151,7 @@ private:
 	//int weight;
 	bool attackable;
 	bool choose;
+	unsigned no;
 	PATHTYPE type;
 public:
 	PATH():attackable(false),choose(false){
@@ -177,7 +179,8 @@ public:
 		return -1;
 	}
 	*/
-	
+	void SetNo(unsigned n){ no = n; }
+	unsigned No(){ return no; }
 	void SetST(double t){ setuptime = t; }
 	void SetHT(double t){ holdtime = t; }
 	void SetCTE(double t){ clock_to_end = t; }

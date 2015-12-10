@@ -75,3 +75,25 @@ cor = (double **)malloc(m*sizeof(double *)+m*n*sizeof(double));
 for (i = 0, pData = (double *)(cor + m); i < m; i++, pData += n)
 cor[i] = pData;
 */
+
+
+/*
+for (int i = 0; i < ss; i++){
+for (int j = i; j < ss; j++){
+if (j == i){	//y = x
+EdgeA[i][j] = 1;
+EdgeB[i][j] = 0;
+cor[i][j] = 0;
+continue;
+}
+double a = (double)rand() / RAND_MAX*0.3 + 0.85;	//®t¶Z¤j·§¦b15%
+double b = 0.0;// (double)rand() / RAND_MAX - 0.5;	//-0.5~0.5
+double c = (double)rand() * 2 / RAND_MAX - 1;
+EdgeA[i][j] = a;		// y = ax+b
+EdgeB[i][j] = b;
+EdgeA[j][i] = 1 / a;	//	x = y/a-b/a
+EdgeB[j][i] = -1*(b / a);
+cor[i][j] = cor[j][i] = c;
+}
+}
+*/

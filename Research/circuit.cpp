@@ -16,6 +16,7 @@ extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
 extern int **conf;
+extern double **sd;
 double period;
 
 
@@ -257,6 +258,7 @@ void ReadPath_l(string filename){
 		spptr->Setflag();
 		epptr->Setflag();
 		p->SetType(LONG);
+		p->SetNo(PathR.size());
 		//p->CalWeight();
 		PathR.push_back(*p);
 		sp = "";		
@@ -377,6 +379,16 @@ void ReadPath_s(string filename){
 	file.close();
 }
 */
+
+void ReadCpInfo(string filename){
+	fstream file;
+	file.open(filename);
+	map<unsigned, unsigned> mapping;
+	for (int i = 0; i < PathC.size(); i++){
+		mapping[PathC[i]->No()] = i;
+	}	
+	file.close();
+}
 
 bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
 	GATE* stptr = pptr->Gate(0);
@@ -1211,9 +1223,6 @@ void GenerateSAT(string filename,int year){
 		int stn = 0, edn = 0;	//放置點(之後，包括自身都會受影響)
 		int lst = stptr->Clock_Length();
 		int led = edptr->Clock_Length();
-		
-		if (!PathC[i]->Is_Chosen())	continue;
-
 		if (exclusive.find(stptr) == exclusive.end()){
 			for (int j = 0; j < lst; j++){
 				for (int k = j + 1; k < lst; k++){
@@ -1236,96 +1245,196 @@ void GenerateSAT(string filename,int year){
 			}
 			exclusive[edptr] = true;
 		}
-		while (stn < lst && edn < led){		//放在共同區上
-			if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
-				break;
-			for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%),需要加入3/11(50%DCC)?
-				if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year+ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year-ERROR)){	//Vio_Check如果沒有violation會回傳true
-					if (x % 2 == 1)	//01 11 -> 10 00
-						file << '-';
-					file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1<< ' ';
-					if (x >= 2)	//10 11
-						file << '-';
-					file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-					for (int j = 0; j < stptr->Clock_Length(); j++){
-						if (j == stn)	continue;
-						file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
-					}
-					for (int j = 0; j < edptr->Clock_Length(); j++){
-						if (j == edn)	continue;
-						file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
-					}
-					file << 0 << endl;					
-				}									
-			}
-			stn++;
-			edn++;
-		}
-		if (stptr->GetType() == "PI"){
-			for (edn = 0; edn < led; edn++){
-				for (int x = 0; x <= 3; x++){
-					if (Vio_Check(pptr, 0, edn, DCC_NONE, (AGINGTYPE)x, year+ERROR) || !Vio_Check(pptr, 0, edn, DCC_NONE, (AGINGTYPE)x, year-ERROR)){
-						if (x % 2 == 1)
+		
+		if (!PathC[i]->Is_Chosen()){		//沒有被選到的Path 加入不可過早的條件
+			while (stn < lst && edn < led){		//放在共同區上
+				if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
+					break;
+				for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
+					if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
+						if (x % 2 == 1)	//01 11 -> 10 00
 							file << '-';
-						file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
-						if (x >= 2)
+						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+						if (x >= 2)	//10 11
 							file << '-';
-						file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-						for (int j = 0; j < led; j++){
+						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+						for (int j = 0; j < stptr->Clock_Length(); j++){
+							if (j == stn)	continue;
+							file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+						}
+						for (int j = 0; j < edptr->Clock_Length(); j++){
 							if (j == edn)	continue;
 							file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 						}
 						file << 0 << endl;
 					}
 				}
+				stn++;
+				edn++;
 			}
-		}
-		else if (edptr->GetType() == "PO"){
-			for (stn = 0; stn < lst; stn++){
-				for (int x = 0; x <= 3; x++){
-					if (Vio_Check(pptr, stn, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) || !Vio_Check(pptr, stn, 0, (AGINGTYPE)x, DCC_NONE, year-ERROR)){
-						if (x % 2 == 1)
+			if (stptr->GetType() == "PI"){
+				for (edn = 0; edn < led; edn++){
+					for (int x = 0; x <= 3; x++){
+						if (!Vio_Check(pptr, 0, edn, DCC_NONE, (AGINGTYPE)x, year - ERROR)){
+							if (x % 2 == 1)
+								file << '-';
+							file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+							if (x >= 2)
+								file << '-';
+							file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
+							for (int j = 0; j < led; j++){
+								if (j == edn)	continue;
+								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							file << 0 << endl;
+						}
+					}
+				}
+			}
+			else if (edptr->GetType() == "PO"){
+				for (stn = 0; stn < lst; stn++){
+					for (int x = 0; x <= 3; x++){
+						if (!Vio_Check(pptr, stn, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR)){
+							if (x % 2 == 1)
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+							if (x >= 2)
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+							for (int j = 0; j < lst; j++){
+								if (j == stn)	continue;
+								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							file << 0 << endl;
+						}
+					}
+				}
+			}
+			int b_point = stn;
+			for (; stn < lst; stn++){
+				for (edn = b_point; edn < led; edn++){
+					for (int x = 0; x <= 3; x++){
+						for (int y = 0; y <= 3; y++){
+							if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
+								if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
+									file << '-';
+								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+								if (x >= 2)	//10 11
+									file << '-';
+								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+								if (y % 2 == 1)
+									file << '-';
+								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+								if (y >= 2)
+									file << '-';
+								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
+								for (int j = 0; j < stptr->Clock_Length(); j++){
+									if (j == stn)	continue;
+									file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+								}
+								for (int j = 0; j < edptr->Clock_Length(); j++){
+									if (j == edn)	continue;
+									file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+								}
+								file << 0 << endl;
+							}
+						}
+					}
+				}
+			}
+		}		
+		else{	
+			while (stn < lst && edn < led){		//放在共同區上
+				if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
+					break;
+				for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
+					if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
+						if (x % 2 == 1)	//01 11 -> 10 00
 							file << '-';
 						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
-						if (x >= 2)
+						if (x >= 2)	//10 11
 							file << '-';
 						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-						for (int j = 0; j < lst; j++){
+						for (int j = 0; j < stptr->Clock_Length(); j++){
 							if (j == stn)	continue;
 							file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+						}
+						for (int j = 0; j < edptr->Clock_Length(); j++){
+							if (j == edn)	continue;
+							file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 						}
 						file << 0 << endl;
 					}
 				}
+				stn++;
+				edn++;
 			}
-		}
-		int b_point = stn;
-		for (; stn < lst; stn++){
-			for (edn = b_point; edn < led; edn++){
-				for (int x = 0; x <= 3; x++){
-					for (int y = 0; y <= 3; y++){
-						if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year+ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year-ERROR)){
-							if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
+			if (stptr->GetType() == "PI"){
+				for (edn = 0; edn < led; edn++){
+					for (int x = 0; x <= 3; x++){
+						if (Vio_Check(pptr, 0, edn, DCC_NONE, (AGINGTYPE)x, year + ERROR) || !Vio_Check(pptr, 0, edn, DCC_NONE, (AGINGTYPE)x, year - ERROR)){
+							if (x % 2 == 1)
 								file << '-';
-							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1<< ' ';
-							if (x >= 2)	//10 11
-								file << '-';
-							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-							if (y % 2 == 1)	
-								file << '-';
-							file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1<< ' ';
-							if (y >= 2)
+							file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+							if (x >= 2)
 								file << '-';
 							file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-							for (int j = 0; j < stptr->Clock_Length(); j++){
-								if (j == stn)	continue;
-								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1<< ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
-							}
-							for (int j = 0; j < edptr->Clock_Length(); j++){
+							for (int j = 0; j < led; j++){
 								if (j == edn)	continue;
 								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
-							file << 0 << endl;							
+							file << 0 << endl;
+						}
+					}
+				}
+			}
+			else if (edptr->GetType() == "PO"){
+				for (stn = 0; stn < lst; stn++){
+					for (int x = 0; x <= 3; x++){
+						if (Vio_Check(pptr, stn, 0, (AGINGTYPE)x, DCC_NONE, year + ERROR) || !Vio_Check(pptr, stn, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR)){
+							if (x % 2 == 1)
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+							if (x >= 2)
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+							for (int j = 0; j < lst; j++){
+								if (j == stn)	continue;
+								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							file << 0 << endl;
+						}
+					}
+				}
+			}
+			int b_point = stn;
+			for (; stn < lst; stn++){
+				for (edn = b_point; edn < led; edn++){
+					for (int x = 0; x <= 3; x++){
+						for (int y = 0; y <= 3; y++){
+							if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
+								if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
+									file << '-';
+								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+								if (x >= 2)	//10 11
+									file << '-';
+								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+								if (y % 2 == 1)
+									file << '-';
+								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+								if (y >= 2)
+									file << '-';
+								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
+								for (int j = 0; j < stptr->Clock_Length(); j++){
+									if (j == stn)	continue;
+									file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+								}
+								for (int j = 0; j < edptr->Clock_Length(); j++){
+									if (j == edn)	continue;
+									file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+								}
+								file << 0 << endl;
+							}
 						}
 					}
 				}
