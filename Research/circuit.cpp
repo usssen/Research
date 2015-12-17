@@ -16,7 +16,7 @@ extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
 extern int **conf;
-extern double **sd;
+extern double **ser;
 double period;
 
 
@@ -144,7 +144,8 @@ void ReadPath_l(string filename){
 	file.open(filename.c_str(), ios::in);	
 	string line,sp,ep;
 	GATE *gptr = NULL, *spptr = NULL, *epptr = NULL;
-	PATH* p = NULL;	
+	PATH* p = NULL;
+	unsigned Path_No = 0;
 	while (getline(file, line)){
 		//cout << line << endl;
 		if (line.find("Startpoint") != string::npos){
@@ -165,8 +166,9 @@ void ReadPath_l(string filename){
 				epptr = new GATE(ep, "PO");			
 		}		
 
-		if (line.find("---") == string::npos || sp == "")	continue;	
+		if (line.find("---") == string::npos || sp == "")	continue;
 		if (spptr->GetType() == "PI" && epptr->GetType() == "PO"){
+			Path_No++;
 			while (line.find("slack (MET)") == string::npos)	getline(file, line);
 			continue;
 		}
@@ -258,7 +260,7 @@ void ReadPath_l(string filename){
 		spptr->Setflag();
 		epptr->Setflag();
 		p->SetType(LONG);
-		p->SetNo(PathR.size());
+		p->SetNo(Path_No++);
 		//p->CalWeight();
 		PathR.push_back(*p);
 		sp = "";		
@@ -383,11 +385,29 @@ void ReadPath_s(string filename){
 void ReadCpInfo(string filename){
 	fstream file;
 	file.open(filename);
-	map<unsigned, unsigned> mapping;
+	map<unsigned, unsigned> mapping;	//PathR -> PathC 的編號
 	for (int i = 0; i < PathC.size(); i++){
 		mapping[PathC[i]->No()] = i;
-	}	
+	}
+	int i, j;
+	double a, b, cc, err;
+	while (file >> i >> j >> a >> b >> cc >> err){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
+		if (mapping.find(i) == mapping.end() || mapping.find(j) == mapping.end())
+			continue;
+		int ii = mapping[i],jj = mapping[j];
+		EdgeA[ii][jj] = a;
+		EdgeB[ii][jj] = b;
+		cor[ii][jj] = cc;
+		ser[ii][jj] = err;
+	}
 	file.close();
+}
+
+void CalPreInv(double x,double &upper, double &lower, int a, int b){		//計算預測區間
+	double dis = 1.96;	//+-多少個標準差 90% 1.65 95% 1.96 99% 2.58
+	double y1 = EdgeA[a][b] * x + EdgeB[a][b];
+	upper = y1 + ser[a][b] * dis;
+	lower = y1 + ser[a][b] * dis;
 }
 
 bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
@@ -546,15 +566,17 @@ void PATH::CalWeight(){
 	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
 }
 */
-double thershold = 0.8;
+double thershold = 0.9;	//R平方
 double t_slope = 0.95;
 
-bool Check_Connect(int a, int b){
+bool Check_Connect(int a, int b){		
+	if (cor[a][b]<0)	//負相關
+		return false;
 	if (EdgeA[a][b] > 1)
 		return Check_Connect(b, a);
-	if (cor[a][b]<thershold && cor[a][b]>-thershold)		//相關係數要超過thershold才視為有邊
+	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
 		return false;
-	if (EdgeA[a][b] < t_slope)	//斜率在範圍內
+	if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數
 		return false;
 	return true;
 }
@@ -587,7 +609,7 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error,從第k個path點推到第i個path 找第i個path的期望值
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//從第k個path點推到第i個path 找第i個path的期望值 先不加誤差測試
 								if (EdgeA[k][i]>1)
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
@@ -611,7 +633,7 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
 								if (EdgeA[k][i]>1)
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
@@ -636,7 +658,7 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
 								if (EdgeA[k][i]>1)
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
@@ -663,7 +685,7 @@ void EstimateTimeEV(double year){
 									double st = year - ERROR, ed = year + ERROR, mid;
 									while (ed - st>0.0001){
 										mid = (st + ed) / 2;
-										double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//要補上error
+										double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
 										if (EdgeA[k][i]>1)
 											Aging_P = AgingRate(WORST, mid);
 										if (Vio_Check(pptr, mid, Aging_P))
@@ -1490,8 +1512,8 @@ double CalQuality(int year){
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
-				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b+error(和相關係數有關)
-				if (EdgeA[i][j]>1)
+				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b => 分成lower bound/upper bound去求最遠能差多少
+				if (EdgeA[i][j]>1)													//這個修一下 改成y'(預測值)>x即視為x
 					Aging_P = AgingRate(WORST, mid);
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;

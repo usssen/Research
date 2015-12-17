@@ -12,7 +12,7 @@ vector<PATH> PathR;
 double **EdgeA;
 double **EdgeB;
 double **cor;
-double **sd;
+double **ser;
 int **conf;
 vector<PATH*> PathC;
 
@@ -58,14 +58,14 @@ int main(int argc, char* argv[]){
 	EdgeB = new double*[ss];		
 	cor = new double*[ss];			//相關係數
 	conf = new int*[ss];			//互斥解數
-	sd = new double*[ss];	//error
+	ser = new double*[ss];	//error
 
 	for (int i = 0; i < ss; i++){
 		EdgeA[i] = new double[ss];
 		EdgeB[i] = new double[ss];
 		cor[i] = new double[ss];
 		conf[i] = new int[ss];
-		sd[i] = new double[ss];
+		ser[i] = new double[ss];
 	}
 	filename = argv[5];
 	ReadCpInfo(filename);
