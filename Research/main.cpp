@@ -17,16 +17,16 @@ int **conf;
 vector<PATH*> PathC;
 
 int main(int argc, char* argv[]){
-	if (argc < 3)
-		return 0;
+	//if (argc < 3)
+	//	return 0;
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
-	//filename = "test.vg";
+	filename = "s38584.vg";
 	ReadCircuit(filename);
 	cout << "Reading Circuit Finished." << endl;
 	filename = argv[2];
-	//filename = "testp.rpt";
+	filename = "s38584.rpt";
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
 	cout << "Read Longest Path Finished."<<endl;	
@@ -68,8 +68,9 @@ int main(int argc, char* argv[]){
 		ser[i] = new double[ss];
 	}
 	filename = argv[5];
+	filename = "s38584.cp";
 	ReadCpInfo(filename);
-
+	return 0;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
 	cout << "Initial Estimate Soluation" << endl;

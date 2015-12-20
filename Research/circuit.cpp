@@ -261,7 +261,6 @@ void ReadPath_l(string filename){
 		epptr->Setflag();
 		p->SetType(LONG);
 		p->SetNo(Path_No++);
-		//p->CalWeight();
 		PathR.push_back(*p);
 		sp = "";		
 	}	
@@ -384,13 +383,15 @@ void ReadPath_s(string filename){
 
 void ReadCpInfo(string filename){
 	fstream file;
-	file.open(filename);
-	map<unsigned, unsigned> mapping;	//PathR -> PathC 的編號
+	file.open(filename.c_str());
+	map<unsigned, unsigned> mapping;	//原編號(沒有去掉PI->PO & NO_GATE的) -> PathC的編號
 	for (int i = 0; i < PathC.size(); i++){
 		mapping[PathC[i]->No()] = i;
 	}
 	int i, j;
 	double a, b, cc, err;
+	string line;
+	getline(file, line);
 	while (file >> i >> j >> a >> b >> cc >> err){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
 		if (mapping.find(i) == mapping.end() || mapping.find(j) == mapping.end())
 			continue;
@@ -1505,26 +1506,50 @@ double CalQuality(int year){
 
 	double worst_all = (double)year;
 	for (int i = 0; i < PathC.size(); i++){
-		double earlist_case = 10000;
+		double e_upper = 10000, e_lower = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
 			//if (!PathC[j]->Is_Chosen())				//計算時從全部可攻擊點(不是僅算被選點)
 			//	continue;			
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
-				double Aging_P = AgingRate(WORST, mid)*EdgeA[i][j] + EdgeB[i][j];	//y = ax+b => 分成lower bound/upper bound去求最遠能差多少
-				if (EdgeA[i][j]>1)													//這個修一下 改成y'(預測值)>x即視為x
+				double upper,lower;
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少
+				double Aging_P;														//lower bound的必要性?
+				if (upper > AgingRate(WORST, mid))													
 					Aging_P = AgingRate(WORST, mid);
+				else
+					Aging_P = upper;
 				if (Vio_Check(PathC[j], mid, Aging_P))
 					st = mid;
 				else
 					ed = mid;
 			}
-			if (mid < earlist_case)
-				earlist_case = mid;				//最早的點(因為發生錯誤最早在此時)
+			if (mid < e_upper)
+				e_upper = mid;				//最早的點(因為發生錯誤最早在此時)
+
+			while (ed - st > 0.0001){
+				mid = (st + ed) / 2;
+				double upper, lower;
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				
+				double Aging_P;														//lower bound
+				if (lower > AgingRate(WORST, mid))			//可能<0 待實驗狀況看看
+					Aging_P = AgingRate(WORST, mid);
+				else
+					Aging_P = lower;
+				if (Vio_Check(PathC[j], mid, Aging_P))
+					st = mid;
+				else
+					ed = mid;
+			}
+			if (mid < e_lower)
+				e_lower = mid;
 		}
-		if (absl((double)year - worst_all) < absl((double)year - earlist_case))		//離給定時間最遠的為最差的狀況
-			worst_all = earlist_case;
+		if (absl((double)year - worst_all) < absl((double)year - e_upper))		//離給定時間最遠的為最差的狀況
+			worst_all = e_upper;
+		if (absl((double)year - worst_all) < absl((double)year - e_lower))
+			worst_all = e_lower;
+		
 	}
 	return worst_all;
 }

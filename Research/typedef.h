@@ -1,7 +1,7 @@
 #ifndef TYPEDEF_H
 #define TYPEDEF_H
 
-const int MAXPATHS = 10000;
+const int MAXPATHS = 5000;
 
 enum WIRETYPE { PI, PO, INN };
 enum PATHTYPE { LONG, SHORT };
