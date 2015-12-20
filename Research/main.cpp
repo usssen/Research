@@ -1,8 +1,8 @@
 #include<iostream>
 #include<fstream>
 #include<string>
-#include<stdlib.h>
 #include<time.h>
+#include<stdlib.h>
 #include "circuit.h"
 #include "aging.h"
 
@@ -16,17 +16,23 @@ double **ser;
 int **conf;
 vector<PATH*> PathC;
 
+inline double absf(double x){
+	if (x < 0)
+		return -x;
+	return x;
+}
+
 int main(int argc, char* argv[]){
-	//if (argc < 3)
-	//	return 0;
+	if (argc < 3)
+		return 0;
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
-	filename = "s38584.vg";
+	//filename = "s38584.vg";
 	ReadCircuit(filename);
 	cout << "Reading Circuit Finished." << endl;
 	filename = argv[2];
-	filename = "s38584.rpt";
+	//filename = "s38584.rpt";
 	Circuit[0].PutClockSource();
 	ReadPath_l(filename);
 	cout << "Read Longest Path Finished."<<endl;	
@@ -68,9 +74,9 @@ int main(int argc, char* argv[]){
 		ser[i] = new double[ss];
 	}
 	filename = argv[5];
-	filename = "s38584.cp";
+	//filename = "s38584.cp";
 	ReadCpInfo(filename);
-	return 0;
+	cout << "Reading CPInfo finished" << endl;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
 	cout << "Initial Estimate Soluation" << endl;
@@ -79,7 +85,7 @@ int main(int argc, char* argv[]){
 		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
 	}
 	bool* bestnode = new bool[PathC.size()];
-	double bestq = 0;
+	double bestq = 200;
 	string s;
 	fstream fileres;
 	for (int tryi = 0; tryi < atoi(argv[4]); tryi++){
@@ -98,12 +104,13 @@ int main(int argc, char* argv[]){
 			if (s.find("UNSAT") != string::npos)
 				break;
 			double Q = CalQuality(year);
-			if (abs(Q - (double)year) < abs(bestq - (double)year)){
+			if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year))){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
 				bestq = Q;
 			}
 			cout << "Q = " << Q << endl;
+			cout << "BEST Q = " << bestq << endl;
 			//cout << "Try to Refine Result : " << endl;
 			for (int i = 1; i <= 5; i++){
 				if (!RefineResult(year)){
@@ -117,15 +124,17 @@ int main(int argc, char* argv[]){
 				}
 				cout << "Q = " << Q << endl;
 				Q = CalQuality(year);
-				if (abs(Q - (double)year) < abs(bestq - (double)year)){
+				if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year))){
 					for (int i = 0; i < PathC.size(); i++)
 						bestnode[i] = PathC[i]->Is_Chosen();
 					bestq = Q;					
 				}
+				cout << "BEST Q = " << bestq << endl;
 			}
 		}
 	}
-	
+	int aaaa;
+	cin >> aaaa;
 	cout << "Start Output Best Result." << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);
@@ -134,8 +143,10 @@ int main(int argc, char* argv[]){
 	do{
 		double Q = CalQuality(year);
 		cout << "Q = " << Q << endl;
-		if (abs(Q - (double)year) < abs(bestq - (double)year))
+		if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year)))
 			bestq = Q;
+		cout << absf(Q - static_cast<double>(year)) << ' ' << absf(bestq - static_cast<double>(year)) << endl;
+		cout << "BEST Q = " << bestq << endl;
 		if (!RefineResult(year))
 			break;
 	} while (CallSatAndReadReport());

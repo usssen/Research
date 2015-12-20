@@ -261,7 +261,8 @@ void ReadPath_l(string filename){
 		epptr->Setflag();
 		p->SetType(LONG);
 		p->SetNo(Path_No++);
-		PathR.push_back(*p);
+		if (p->length()>2)		//中間有gate 不是直接連
+			PathR.push_back(*p);
 		sp = "";		
 	}	
 	file.close();
@@ -388,14 +389,20 @@ void ReadCpInfo(string filename){
 	for (int i = 0; i < PathC.size(); i++){
 		mapping[PathC[i]->No()] = i;
 	}
-	int i, j;
+	int im, jn;
 	double a, b, cc, err;
 	string line;
 	getline(file, line);
-	while (file >> i >> j >> a >> b >> cc >> err){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
-		if (mapping.find(i) == mapping.end() || mapping.find(j) == mapping.end())
+	while (file >> im >> jn >> a >> b){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
+		file >> line;							//相關係數會有nan
+		if (line == "nan")
+			cc = 0;
+		else
+			cc = atof(line.c_str());
+		file >> err;
+		if (mapping.find(im) == mapping.end() || mapping.find(jn) == mapping.end())
 			continue;
-		int ii = mapping[i],jj = mapping[j];
+		int ii = mapping[im],jj = mapping[jn];
 		EdgeA[ii][jj] = a;
 		EdgeB[ii][jj] = b;
 		cor[ii][jj] = cc;
@@ -570,11 +577,11 @@ void PATH::CalWeight(){
 double thershold = 0.9;	//R平方
 double t_slope = 0.95;
 
-bool Check_Connect(int a, int b){		
+bool Check_Connect(int a, int b){	
 	if (cor[a][b]<0)	//負相關
 		return false;
 	if (EdgeA[a][b] > 1)
-		return Check_Connect(b, a);
+		return Check_Connect(b, a);	
 	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
 		return false;
 	if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數
@@ -1023,18 +1030,19 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	if (refresh){
 		//degree = new int[No_node];
 		//color = new int[No_node];
-		for (int i = 0; i < No_node; i++){
-			PathC[i]->SetChoose(false);
-			degree[i] = 0;
-			color[i] = 1;
-			nochoose[i] = false;
-			for (int j = 0; j < No_node; j++){
-				if (Check_Connect(i, j))
+		for (int i = 0; i < No_node; i++){			
+			PathC[i]->SetChoose(false);			
+			degree[i] = 0;			
+			color[i] = 1;			
+			nochoose[i] = false;			
+			for (int j = 0; j < No_node; j++){				//注意可能有在CPInfo中濾掉此處未濾掉的
+				if (Check_Connect(i, j))				
 					degree[i]++;
-			}
+			}			
 		}
 		refresh = false;
 	}
+	
 	int mini;
 	//double min;
 	int w_point = 0;
@@ -1145,7 +1153,8 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 			cout << period << endl;		
 	for (int i = 0; i < PathR.size(); i++){		
 		bool chk = false;
-		PATH* pptr = &PathR[i];		
+		PATH* pptr = &PathR[i];
+		pptr->SetAttack(false);
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);		
 		int lst = stptr->Clock_Length();
@@ -1229,7 +1238,8 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 	return;
 }
 
-void GenerateSAT(string filename,int year){
+void GenerateSAT(string filename,int year){		//看來還得加入"不可攻擊的" 不會太早錯誤 => 代表怎麼改都會1.太早(大多應該是) 2.太晚
+	//cout << "Start Generate SAT" << endl;		//這只能調Tc
 	int ct = 0;
 	for (int i = 0; i < PathC.size(); i++)		
 		if (PathC[i]->Is_Chosen())	ct++;		
@@ -1464,10 +1474,11 @@ void GenerateSAT(string filename,int year){
 			}
 		}
 	}
-	file.close();	
+	file.close();
 }
 
 bool CallSatAndReadReport(){
+	//cout << "Start Call SAT" << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		GATE* stptr = PathC[i]->Gate(0);
 		GATE* edptr = PathC[i]->Gate(PathC[i]->length() - 1);
@@ -1503,7 +1514,7 @@ bool CallSatAndReadReport(){
 
 
 double CalQuality(int year){
-
+	cout << "Start CalQuality" << endl;
 	double worst_all = (double)year;
 	for (int i = 0; i < PathC.size(); i++){
 		double e_upper = 10000, e_lower = 10000;
