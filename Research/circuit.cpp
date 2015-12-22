@@ -561,19 +561,7 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		return false;
 	}
 }
-/*
-void PATH::CalWeight(){
-	GATE* stptr = gate_list[0];
-	GATE* edptr = gate_list[gate_list.size() - 1];
-	int same = 0;
-	while (stptr->Clock_Length() > same && edptr->Clock_Length() > same){
-		if (stptr->GetClockPath(same) != edptr->GetClockPath(same))
-			break;
-		same++;
-	}
-	weight = (stptr->Clock_Length()) + (edptr->Clock_Length()) - 2 * same;
-}
-*/
+
 double thershold = 0.9;	//R平方
 double t_slope = 0.95;
 
@@ -1027,9 +1015,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 		hashp.PutNowStatus();
 		return false;
 	}
-	if (refresh){
-		//degree = new int[No_node];
-		//color = new int[No_node];
+	if (refresh){		
 		for (int i = 0; i < No_node; i++){			
 			PathC[i]->SetChoose(false);			
 			degree[i] = 0;			
@@ -1063,8 +1049,8 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 		}
 		PathC[i]->SetChoose(false);
 		double w = 0;		//期望此值能夠算出和給定值之差
-		w += 3*EstimateAddTimes(year, i);	//加入i點後增加的誤差值
-		w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
+		w += 3*EstimateAddTimes(year, i);	//加入i點後增加的解差值		
+		//w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
 		w += EstimatePSD(i);		//加入i點後增加的"類標準差"
 		w -= (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
 		cand.push_back(PN_W(i, w));
@@ -1144,13 +1130,13 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 		aa = bb = cc = dd = 0;
 		period = 0.0;
 		for (int i = 0; i < PathR.size(); i++){
-			double pp = (1.0 + AgingRate(NORMAL, year))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0))+(1.0+AgingRate(FF,year))*(PathR[i].Out_time(0)-PathR[i].In_time(0))+ (1.0+AgingRate(DCC_NONE,year))*(PathR[i].GetCTH() - PathR[i].GetCTE());
+			double pp = (1 + AgingRate(WORST, static_cast<double>(year + ERROR)))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0)) + (1.0 + AgingRate(FF, static_cast<double>(year + ERROR)))*(PathR[i].Out_time(0) - PathR[i].In_time(0)) + (1.0 + AgingRate(DCC_NONE, static_cast<double>(year + ERROR)))*(PathR[i].GetCTH() - PathR[i].GetCTE()) + PathR[i].GetST();	//check一下
 			pp *= margin;
 			if (pp>period)
 				period = pp;
 		}
 		if (flag)
-			cout << period << endl;		
+			cout << "Period = " << period << endl;
 	for (int i = 0; i < PathR.size(); i++){		
 		bool chk = false;
 		PATH* pptr = &PathR[i];
@@ -1238,12 +1224,21 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 	return;
 }
 
+void CheckNoVio(double year){
+	for (int i = 0; i < PathR.size(); i++){
+		if (!Vio_Check(&PathR[i], year, AgingRate(WORST, year))){
+			cout << "Path" << i << " Violation!" << endl;
+		}
+	}
+}
+
 void GenerateSAT(string filename,int year){		//看來還得加入"不可攻擊的" 不會太早錯誤 => 代表怎麼改都會1.太早(大多應該是) 2.太晚
 	//cout << "Start Generate SAT" << endl;		//這只能調Tc
 	int ct = 0;
 	for (int i = 0; i < PathC.size(); i++)		
-		if (PathC[i]->Is_Chosen())	ct++;		
-		cout << ct << " Paths be chosen." << endl;
+		if (PathC[i]->Is_Chosen())	
+			ct++;		
+	cout << ct << " Paths be chosen." << endl;
 	fstream file;
 	fstream temp;	
 	file.open(filename.c_str(), ios::out);

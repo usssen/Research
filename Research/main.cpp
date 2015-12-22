@@ -58,6 +58,7 @@ int main(int argc, char* argv[]){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
+	//CheckNoVio(year);
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
@@ -79,11 +80,13 @@ int main(int argc, char* argv[]){
 	cout << "Reading CPInfo finished" << endl;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
+	/*
 	cout << "Initial Estimate Soluation" << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		CalSolMines(year, i);		
 		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
 	}
+	*/
 	bool* bestnode = new bool[PathC.size()];
 	double bestq = 200;
 	string s;
@@ -111,7 +114,6 @@ int main(int argc, char* argv[]){
 			}
 			cout << "Q = " << Q << endl;
 			cout << "BEST Q = " << bestq << endl;
-			//cout << "Try to Refine Result : " << endl;
 			for (int i = 1; i <= 5; i++){
 				if (!RefineResult(year)){
 					//cout << "Result is in limit!" << endl;
@@ -132,9 +134,7 @@ int main(int argc, char* argv[]){
 				cout << "BEST Q = " << bestq << endl;
 			}
 		}
-	}
-	int aaaa;
-	cin >> aaaa;
+	}	
 	cout << "Start Output Best Result." << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);

@@ -22,6 +22,7 @@ bool RefineResult(int year);
 void EstimateTimeEV(double year);
 void CalSolMines(double year, int p);
 void ReadCpInfo(string filename);
+void CheckNoVio(double year);
 
 class GATE;
 
