@@ -148,9 +148,9 @@ private:
 	double holdtime;
 	double clock_to_end;
 	double estime;
-	double psd;	//類標準差
-	//int weight;
+	double psd;	//類標準差	
 	bool attackable;
+	bool safe;
 	bool choose;
 	unsigned no;
 	PATHTYPE type;
@@ -189,9 +189,7 @@ public:
 	double GetHT(){ return holdtime; }
 	double GetCTE(){ return clock_to_end; }
 	double GetCTH(){ return timing[0].in_time(); }
-	double GetAT(){ return timing[timing.size()-1].in_time(); }
-	//void CalWeight();
-	//int GetWeight(){ return weight; }
+	double GetAT(){ return timing[timing.size()-1].in_time(); }	
 	void SetType(PATHTYPE t){ type = t; }
 	PATHTYPE GetType(){ return type; }
 	int length(){ return gate_list.size(); }
@@ -203,6 +201,8 @@ public:
 	double GetEstimateTime(){ return estime; }
 	void SetPSD(double t) { psd = t; }
 	double GetPSD(){ return psd; }
+	void SetSafe(bool s){ safe = s; }
+	bool IsSafe(){ return safe; }
 };
 
 

@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
-	//CheckNoVio(year);
+	CheckNoVio(year + 1);
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b

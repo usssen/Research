@@ -1,5 +1,5 @@
-﻿已經開始建置於 2015/12/22 下午 05:58:34。
-     1>節點 2 (Build 目標) 上的專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj"。
+﻿已經開始建置於 2015/12/22 下午 08:48:04。
+     1>節點 2 (Build 目標) 上的專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj"。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt research\circuit.cpp
          circuit.cpp
@@ -12,24 +12,23 @@
      1>research\circuit.cpp(974): warning C4018: '<' : signed/unsigned 不相符
      1>research\circuit.cpp(990): warning C4018: '<' : signed/unsigned 不相符
      1>research\circuit.cpp(999): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1065): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1132): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1140): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1228): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1238): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1477): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1504): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1514): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1516): warning C4018: '<' : signed/unsigned 不相符
-     1>research\circuit.cpp(1566): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1063): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1128): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1136): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1217): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1463): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1490): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1500): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1502): warning C4018: '<' : signed/unsigned 不相符
+     1>research\circuit.cpp(1551): warning C4018: '<' : signed/unsigned 不相符
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.lib" /MACHINE:X86 Debug\aging.obj
          Debug\circuit.obj
          Debug\main.obj
          Debug\test.obj
-         Research.vcxproj -> C:\Users\wss_lab\Desktop\vm_share\Research\Research\Debug\Research.exe
-     1>專案 "C:\Users\wss_lab\Desktop\vm_share\Research\Research\Research.vcxproj" (Build 目標) 建置完成。
+         Research.vcxproj -> C:\Users\Wang Shu-sheng\Desktop\Research\Debug\Research.exe
+     1>專案 "C:\Users\Wang Shu-sheng\Desktop\Research\Research.vcxproj" (Build 目標) 建置完成。
 
 建置成功。
 
-經過時間 00:00:01.61
+經過時間 00:00:00.87

@@ -1002,15 +1002,13 @@ public:
 };
 
 
-bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
-	//static double p[4] = { 1.0, 1.0, 1.0, 1.0 };
-	//static double pre_mvalue = 0.0;
+bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){	
 	int No_node = PathC.size();
 	static bool refresh = true;
 	static int *degree = new int[No_node], *color = new int[No_node];
 	static bool *nochoose = new bool[No_node];
 	static HASHTABLE hashp(16, PathC.size());
-	if (pre_rvalueb < 0){	//<0代表上次的無解,僅做加入hash
+	if (pre_rvalueb < 0){									//<0代表上次的無解,僅做加入hash
 		refresh = true;
 		hashp.PutNowStatus();
 		return false;
@@ -1065,8 +1063,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	while (ii < cand.size() - 1 && (rand() % 10) >= 9){	//10%的機會跳到較差的解
 		ii++;
 	}
-	mini = cand[ii].pn;
-	//pre_mvalue = min;
+	mini = cand[ii].pn;	
 	for (int i = 0; i < No_node; i++){
 		if (Check_Connect(mini, i) && color[i] == 1){
 			for (int j = 0; j < No_node; j++){
@@ -1100,8 +1097,9 @@ int HashAllClockBuffer(){
 	cbuffer_code.clear();
 	cbuffer_decode.clear();
 	int k = 0;
-	for (unsigned i = 0; i < PathC.size(); i++){
-		PATH* pptr = PathC[i];
+	for (unsigned i = 0; i < PathR.size(); i++){
+		PATH* pptr = &PathR[i];
+		if (pptr->IsSafe())	continue;
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		if (stptr->GetType() != "PI"){
@@ -1125,9 +1123,7 @@ int HashAllClockBuffer(){
 }
 
 
-void CheckPathAttackbility(int year,double margin,bool flag){
-		int aa, bb, cc, dd;
-		aa = bb = cc = dd = 0;
+void CheckPathAttackbility(int year,double margin,bool flag){		
 		period = 0.0;
 		for (int i = 0; i < PathR.size(); i++){
 			double pp = (1 + AgingRate(WORST, static_cast<double>(year + ERROR)))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0)) + (1.0 + AgingRate(FF, static_cast<double>(year + ERROR)))*(PathR[i].Out_time(0) - PathR[i].In_time(0)) + (1.0 + AgingRate(DCC_NONE, static_cast<double>(year + ERROR)))*(PathR[i].GetCTH() - PathR[i].GetCTE()) + PathR[i].GetST();	//check一下
@@ -1137,86 +1133,78 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 		}
 		if (flag)
 			cout << "Period = " << period << endl;
-	for (int i = 0; i < PathR.size(); i++){		
-		bool chk = false;
+	for (int i = 0; i < PathR.size(); i++){				
 		PATH* pptr = &PathR[i];
 		pptr->SetAttack(false);
+		pptr->SetSafe(true);
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);		
 		int lst = stptr->Clock_Length();
 		int led = edptr->Clock_Length();
 		int branch = 1;		
 		if (stptr->GetType() == "PI"){
-			for (int j = 1; j < led && !chk; j++){
+			for (int j = 1; j < led; j++){
 				for (int x = 1; x <= 3; x++){
-					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year - ERROR)){
-						PathC.push_back(pptr);
-						if (flag){
-							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "PI+FF" << endl;
-							cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
-						}
-						aa++;
-						chk = true;
-						pptr->SetAttack(true);
-						break;
-					}
+					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year + ERROR))
+						pptr->SetSafe(false);
+					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year - ERROR))
+						pptr->SetAttack(true);	
 				}				
-			}
+			}		
 		}
 		else if (edptr->GetType() == "PO"){
-			for (int j = 1; j < lst && !chk; j++){
+			for (int j = 1; j < lst; j++){
 				for (int x = 1; x <= 3; x++){
-					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR)){
-						PathC.push_back(pptr);
-						if (flag){
-							cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+PO" << endl;
-							cout << "Put DCC On : " << stptr->GetClockPath(j)->GetName() << " NONE" << endl << "DCC TYPE : " << x << endl;
-						}
-						bb++;
-						chk = true;
-						pptr->SetAttack(true);
-						break;
-					}
+					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year + ERROR))
+						pptr->SetSafe(false);
+					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR))										
+						pptr->SetAttack(true);	
 				}				
-			}
+			}	
 		}
-		while (branch < lst&&branch < led && !chk){			
+		while (branch < lst&&branch < led){			
 			if (stptr->GetClockPath(branch) != edptr->GetClockPath(branch))
 				break;
-			for (int x = 1; x <= 3;x++)
-				if (!Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year+ERROR) && Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){
-					PathC.push_back(pptr);
-					if (flag){
-						cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF(branch)" << endl;
-						cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << endl;
-					}
-					cc++;
-					chk = true;
-					pptr->SetAttack(true);
-					break;
-				}
+			for (int x = 1; x <= 3; x++){
+				if (!Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year + ERROR))
+					pptr->SetSafe(false);
+				if (!Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year + ERROR) && Vio_Check(pptr, branch, branch, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR))
+					pptr->SetAttack(true);				
+			}
 			branch++;
-		}
-		if (!chk)
-		for (int j = branch; j < lst && !chk; j++){
-			for (int k = branch; k < led && !chk; k++){
-				for (int x = 0; x < 3 && !chk; x++){
+		}		
+		for (int j = branch; j < lst; j++){
+			for (int k = branch; k < led; k++){
+				for (int x = 0; x < 3; x++){
 					for (int y = 0; y < 3; y++){
 						if (x == 0 && y == 0)	continue;
-						if (!Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year+ERROR) && Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
-							PathC.push_back(pptr);
-							if (flag){
-								cout << "Start : " << stptr->GetName() << " End : " << edptr->GetName() << endl << "FF+FF" << endl;
-								cout << "Put DCC On : " << stptr->GetClockPath(branch)->GetName() << " " << edptr->GetClockPath(branch)->GetName() << endl << "DCC TYPE : " << x << ' ' << y << endl;
-							}
-							dd++;
-							chk = true;
+						if (!Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year + ERROR))
+							pptr->SetSafe(false);
+						if (!Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year+ERROR) && Vio_Check(pptr, j, k, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR))	
 							pptr->SetAttack(true);
-							break;
-						}
 					}
 				}
 			}
+		}
+	}
+	int aa, bb, cc, dd;
+	aa = bb = cc = dd = 0;
+	for (unsigned i = 0; i < PathR.size(); i++){
+		PATH* pptr = &PathR[i];
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		if (pptr->CheckAttack()){
+			if (stptr->GetType() == "PI")
+				aa++;
+			else if (edptr->GetType() == "PO")
+				bb++;
+			else
+				cc++;
+			PathC.push_back(pptr);
+		}
+		else{
+			if (pptr->IsSafe() == false)
+				dd++;
 		}
 	}
 	if (flag)
@@ -1225,27 +1213,25 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 }
 
 void CheckNoVio(double year){
+	cout << "Checking Violation... ";
 	for (int i = 0; i < PathR.size(); i++){
 		if (!Vio_Check(&PathR[i], year, AgingRate(WORST, year))){
 			cout << "Path" << i << " Violation!" << endl;
+			return;
 		}
 	}
+	cout << "No Violation!" << endl;
 }
 
-void GenerateSAT(string filename,int year){		//看來還得加入"不可攻擊的" 不會太早錯誤 => 代表怎麼改都會1.太早(大多應該是) 2.太晚
-	//cout << "Start Generate SAT" << endl;		//這只能調Tc
-	int ct = 0;
-	for (int i = 0; i < PathC.size(); i++)		
-		if (PathC[i]->Is_Chosen())	
-			ct++;		
-	cout << ct << " Paths be chosen." << endl;
+void GenerateSAT(string filename,int year){		
 	fstream file;
 	fstream temp;	
 	file.open(filename.c_str(), ios::out);
 	map<GATE*, bool> exclusive;
-	HashAllClockBuffer();	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2	
-	for (unsigned i = 0; i < PathC.size(); i++){
-		PATH* pptr = PathC[i];
+	HashAllClockBuffer();	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2
+	for (unsigned i = 0; i < PathR.size(); i++){
+		PATH* pptr = &PathR[i];
+		if (pptr->IsSafe())	continue;
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length()-1);
 		int stn = 0, edn = 0;	//放置點(之後，包括自身都會受影響)
@@ -1274,7 +1260,7 @@ void GenerateSAT(string filename,int year){		//看來還得加入"不可攻擊的" 不會太早
 			exclusive[edptr] = true;
 		}
 		
-		if (!PathC[i]->Is_Chosen()){		//沒有被選到的Path 加入不可過早的條件
+		if (pptr->Is_Chosen() == false){		//沒有被選到的Path 加入不可過早的條件
 			while (stn < lst && edn < led){		//放在共同區上
 				if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
 					break;
@@ -1514,14 +1500,13 @@ double CalQuality(int year){
 	for (int i = 0; i < PathC.size(); i++){
 		double e_upper = 10000, e_lower = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
-			//if (!PathC[j]->Is_Chosen())				//計算時從全部可攻擊點(不是僅算被選點)
-			//	continue;			
+			//計算時從全部可攻擊點(不是僅算被選點)					
 			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper,lower;
 				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少
-				double Aging_P;														//lower bound的必要性?
+				double Aging_P;														
 				if (upper > AgingRate(WORST, mid))													
 					Aging_P = AgingRate(WORST, mid);
 				else
@@ -1539,7 +1524,7 @@ double CalQuality(int year){
 				double upper, lower;
 				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				
 				double Aging_P;														//lower bound
-				if (lower > AgingRate(WORST, mid))			//可能<0 待實驗狀況看看
+				if (lower > AgingRate(WORST, mid))									//可能<0 待實驗狀況看看
 					Aging_P = AgingRate(WORST, mid);
 				else
 					Aging_P = lower;
@@ -1557,16 +1542,19 @@ double CalQuality(int year){
 			worst_all = e_lower;
 		
 	}
-	return worst_all;
+	return worst_all;		//改成用bound或是montecarlo的方式
 }
 
 bool RefineResult(int year){
 	double early = 10000.0;
 	int earlyp = -1;
 	for (int i = 0; i < PathR.size(); i++){
-		if (!Vio_Check(&PathR[i], (double)year - ERROR, AgingRate(WORST, year - ERROR))){	//!PathR[i].Is_Chosen() && 全部都check找最差的
-			if (PathR[i].CheckAttack())
-				cout << "*";
+		PATH* pptr = &PathR[i];
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){	//!PathR[i].Is_Chosen() && 全部都check找最差的
+			if (pptr->CheckAttack())
+				cout << "*";	
 			double st = 1.0, ed = 10, mid;
 			while (ed - st>0.0001){
 				mid = (st + ed) / 2;
