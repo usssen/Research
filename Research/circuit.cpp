@@ -1123,7 +1123,7 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 				period = pp;
 		}
 		if (flag)
-			cout << "Period = " << period << endl;
+			cout << "Clock Period = " << period << endl;
 	for (int i = 0; i < PathR.size(); i++){				
 		PATH* pptr = &PathR[i];
 		pptr->SetAttack(false);

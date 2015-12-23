@@ -29,13 +29,15 @@ int main(int argc, char* argv[]){
 	string filename;
 	filename = argv[1];
 	//filename = "s38584.vg";
+	cout << "Reading Circuit...";
 	ReadCircuit(filename);
-	cout << "Reading Circuit Finished." << endl;
+	cout << "Finished." << endl;
 	filename = argv[2];
 	//filename = "s38584.rpt";
 	Circuit[0].PutClockSource();
+	cout << "Reading Cirtical Paths Information...";
 	ReadPath_l(filename);
-	cout << "Read Longest Path Finished."<<endl;	
+	cout << "finished." << endl;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
 	int year = atoi(argv[3]);
@@ -65,8 +67,9 @@ int main(int argc, char* argv[]){
 	}
 	filename = argv[5];
 	//filename = "s38584.cp";
+	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
-	cout << "Reading CPInfo finished" << endl;
+	cout << "finisned." << endl;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
 	/*
