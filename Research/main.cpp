@@ -22,6 +22,12 @@ inline double absf(double x){
 	return x;
 }
 
+inline double maxf(double a, double b){
+	if (a > b)
+		return a;
+	return b;
+}
+
 int main(int argc, char* argv[]){
 	if (argc < 5)
 		return 0;
@@ -68,7 +74,7 @@ int main(int argc, char* argv[]){
 	filename = argv[5];
 	//filename = "s38584.cp";
 	cout << "Reading CPInfo...";
-	ReadCpInfo(filename);
+	ReadCpInfo(filename, year);
 	cout << "finisned." << endl;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
@@ -80,7 +86,7 @@ int main(int argc, char* argv[]){
 	}
 	*/
 	bool* bestnode = new bool[PathC.size()];
-	double bestq = 200;
+	double bestup = 100, bestlow = -100;
 	string s;
 	fstream fileres;
 	for (int tryi = 0; tryi < atoi(argv[4]); tryi++){
@@ -98,14 +104,16 @@ int main(int argc, char* argv[]){
 			fileres.close();
 			if (s.find("UNSAT") != string::npos)
 				break;
-			double Q = CalQuality(year);
-			if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year))){
+			double upper, lower;
+			CalQuality(year, upper, lower);
+			if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
-				bestq = Q;
+				bestlow = lower;
+				bestup = upper;
 			}
-			cout << "Q = " << Q << endl;
-			cout << "BEST Q = " << bestq << endl;
+			cout << "Q = " << upper << " ~ " << lower << endl;
+			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 			for (int i = 1; i <= 5; i++){
 				if (!RefineResult(year)){
 					//cout << "Result is in limit!" << endl;
@@ -116,14 +124,15 @@ int main(int argc, char* argv[]){
 					//cout << "Can't Refine Anymore" << endl;
 					break;
 				}
-				cout << "Q = " << Q << endl;
-				Q = CalQuality(year);
-				if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year))){
+				CalQuality(year,upper,lower);							
+				if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
 					for (int i = 0; i < PathC.size(); i++)
 						bestnode[i] = PathC[i]->Is_Chosen();
-					bestq = Q;					
+					bestlow = lower;
+					bestup = upper;
 				}
-				cout << "BEST Q = " << bestq << endl;
+				cout << "Q = " << upper << " ~ " << lower << endl;
+				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 			}
 		}
 	}	
@@ -133,16 +142,18 @@ int main(int argc, char* argv[]){
 	GenerateSAT("sat.cnf", year);
 	CallSatAndReadReport();
 	do{
-		double Q = CalQuality(year);
-		cout << "Q = " << Q << endl;
-		if (absf(Q - static_cast<double>(year)) < absf(bestq - static_cast<double>(year)))
-			bestq = Q;
-		cout << absf(Q - static_cast<double>(year)) << ' ' << absf(bestq - static_cast<double>(year)) << endl;
-		cout << "BEST Q = " << bestq << endl;
+		double upper, lower;
+		CalQuality(year, upper, lower);		
+		if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
+			bestlow = lower;
+			bestup = upper;
+		}
+		cout << "Q = " << upper << " ~ " << lower << endl;
+		cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 		if (!RefineResult(year))
 			break;
 	} while (CallSatAndReadReport());
 	RefineResult(year);
-	cout << "BEST Q = " << bestq << endl;
+	cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 	return 0;
 }

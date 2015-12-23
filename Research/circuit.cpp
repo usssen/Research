@@ -382,7 +382,7 @@ void ReadPath_s(string filename){
 }
 */
 
-void ReadCpInfo(string filename){
+void ReadCpInfo(string filename,double year){
 	fstream file;
 	file.open(filename.c_str());
 	map<unsigned, unsigned> mapping;	//原編號(沒有去掉PI->PO & NO_GATE的) -> PathC的編號
@@ -393,13 +393,27 @@ void ReadCpInfo(string filename){
 	double a, b, cc, err;
 	string line;
 	getline(file, line);
-	while (file >> im >> jn >> a >> b){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
-		file >> line;							//相關係數會有nan
-		if (line == "nan")
+	while (file >> im >> jn){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
+		file >> line;
+		if (line == "nan"){				//斜率無窮大 => x = const => 無法推 =>跳過
+			a = b = err = 10000;
 			cc = 0;
-		else
-			cc = atof(line.c_str());
-		file >> err;
+			file >> line;
+			file >> line;
+			file >> line;
+		}
+		else{
+			a = atof(line.c_str());
+			file >> b;
+			file >> line;
+			if (line == "nan"){						//y = b => 斜率為0 => b設為該年的最大老化值
+				cc = 0;
+				b = AgingRate(WORST, year);
+			}
+			else
+				cc = atof(line.c_str());
+			file >> err;
+		}
 		if (mapping.find(im) == mapping.end() || mapping.find(jn) == mapping.end())
 			continue;
 		int ii = mapping[im],jj = mapping[jn];
@@ -411,7 +425,11 @@ void ReadCpInfo(string filename){
 	file.close();
 }
 
-void CalPreInv(double x,double &upper, double &lower, int a, int b){		//計算預測區間
+void CalPreInv(double x, double &upper, double &lower, int a, int b){		//計算預測區間
+	if (EdgeA[a][b] > 9999){
+		upper = lower = 10000;
+		return;
+	}	
 	double dis = 1.96;	//+-多少個標準差 90% 1.65 95% 1.96 99% 2.58
 	double y1 = EdgeA[a][b] * x + EdgeB[a][b];
 	upper = y1 + ser[a][b] * dis;
@@ -566,6 +584,8 @@ double thershold = 0.9;	//R平方
 double t_slope = 0.95;
 
 bool Check_Connect(int a, int b){	
+	if (EdgeA[a][b] > 9999)
+		return false;
 	if (cor[a][b]<0)	//負相關
 		return false;
 	if (EdgeA[a][b] > 1)
@@ -593,7 +613,9 @@ void EstimateTimeEV(double year){
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		double max = 0;
 		double max2 = 0;
-		for (int k = 0; k < No_node;k++){			
+		for (int k = 0; k < No_node;k++){
+			if (EdgeA[k][i]>9999)
+				continue;
 			double pv = 0;		//	期望值&解 (path i的, 由path k推得)
 			double pv2 = 0;		//	類標準差 -> sigma(xi - avg)^2 /N  用給定時間代替avg
 			int solc = 0;
@@ -605,7 +627,7 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//從第k個path點推到第i個path 找第i個path的期望值 先不加誤差測試
+								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//從第k個path點推到第i個path 找第i個path的期望值
 								if (EdgeA[k][i]>1)
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
@@ -1494,16 +1516,16 @@ bool CallSatAndReadReport(){
 }
 
 
-double CalQuality(int year){
+double CalQuality(int year,double &up,double &low){
 	cout << "Start CalQuality" << endl;
-	double worst_all = (double)year;
+	up = 10.0, low = 0.0;
 	for (int i = 0; i < PathC.size(); i++){
 		double e_upper = 10000, e_lower = 10000;
 		for (int j = 0; j < PathC.size(); j++){			
-			//計算時從全部可攻擊點(不是僅算被選點)					
-			double st = 1.0, ed = 10.0, mid;
-			//cout << i << ' ' << j << endl;
-			//cout << "y=" << EdgeA[i][j] << "x+" << EdgeB[i][j] << endl;
+			//計算時從全部可攻擊點(不是僅算被選點)
+			if (EdgeA[i][j]>9999)
+				continue;
+			double st = 1.0, ed = 10.0, mid;		
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper,lower;
@@ -1538,13 +1560,13 @@ double CalQuality(int year){
 			if (mid < e_lower)
 				e_lower = mid;
 		}
-		if (absl((double)year - worst_all) < absl((double)year - e_upper))		//離給定時間最遠的為最差的狀況
-			worst_all = e_upper;
-		if (absl((double)year - worst_all) < absl((double)year - e_lower))
-			worst_all = e_lower;
+		if (up > e_upper)		
+			up = e_upper;
+		if (low < e_lower)
+			low = e_lower;
 		
 	}
-	return worst_all;		//改成用bound或是montecarlo的方式
+	return 0.0;		//改成用bound或是montecarlo的方式
 }
 bool CheckImpact(PATH* pptr){
 	GATE* gptr;
