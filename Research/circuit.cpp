@@ -415,7 +415,7 @@ void CalPreInv(double x,double &upper, double &lower, int a, int b){		//計算預測
 	double dis = 1.96;	//+-多少個標準差 90% 1.65 95% 1.96 99% 2.58
 	double y1 = EdgeA[a][b] * x + EdgeB[a][b];
 	upper = y1 + ser[a][b] * dis;
-	lower = y1 + ser[a][b] * dis;
+	lower = y1 - ser[a][b] * dis;
 }
 
 bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
@@ -1078,15 +1078,6 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 	PathC[mini]->SetChoose(true);
 	degree[mini] = 0;
 	color[mini] = -1;	//被選點改為黑
-	/*
-	refresh = true;
-	for (int i = 0; i < No_node; i++){
-		if (color[i] == 1){
-			refresh = false;
-			break;
-		}
-	}
-	*/
 	return true;
 }
 
@@ -1207,8 +1198,11 @@ void CheckPathAttackbility(int year,double margin,bool flag){
 				dd++;
 		}
 	}
-	if (flag)
+	if (flag){
+		for (int i = 0; i < PathC.size(); i++)
+			cout << PathC[i]->Gate(0)->GetName() << " -> " << PathC[i]->Gate(PathC[i]->length() - 1)->GetName() << " Length = " << PathC[i]->length() << endl;
 		cout << aa << ' ' << bb << ' ' << cc << ' ' << dd << endl;
+	}
 	return;
 }
 
@@ -1217,7 +1211,6 @@ void CheckNoVio(double year){
 	for (int i = 0; i < PathR.size(); i++){
 		if (!Vio_Check(&PathR[i], year, AgingRate(WORST, year))){
 			cout << "Path" << i << " Violation!" << endl;
-			return;
 		}
 	}
 	cout << "No Violation!" << endl;
@@ -1259,33 +1252,8 @@ void GenerateSAT(string filename,int year){
 			}
 			exclusive[edptr] = true;
 		}
-		
-		if (pptr->Is_Chosen() == false){		//沒有被選到的Path 加入不可過早的條件
-			while (stn < lst && edn < led){		//放在共同區上
-				if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
-					break;
-				for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
-					if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
-						if (x % 2 == 1)	//01 11 -> 10 00
-							file << '-';
-						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
-						if (x >= 2)	//10 11
-							file << '-';
-						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-						for (int j = 0; j < stptr->Clock_Length(); j++){
-							if (j == stn)	continue;
-							file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
-						}
-						for (int j = 0; j < edptr->Clock_Length(); j++){
-							if (j == edn)	continue;
-							file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
-						}
-						file << 0 << endl;
-					}
-				}
-				stn++;
-				edn++;
-			}
+
+		if (pptr->Is_Chosen() == false){		//沒有被選到的Path 加入不可過早的條件			
 			if (stptr->GetType() == "PI"){
 				for (edn = 0; edn < led; edn++){
 					for (int x = 0; x <= 3; x++){
@@ -1324,65 +1292,68 @@ void GenerateSAT(string filename,int year){
 					}
 				}
 			}
-			int b_point = stn;
-			for (; stn < lst; stn++){
-				for (edn = b_point; edn < led; edn++){
-					for (int x = 0; x <= 3; x++){
-						for (int y = 0; y <= 3; y++){
-							if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
-								if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
-									file << '-';
-								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
-								if (x >= 2)	//10 11
-									file << '-';
-								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-								if (y % 2 == 1)
-									file << '-';
-								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
-								if (y >= 2)
-									file << '-';
-								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-								for (int j = 0; j < stptr->Clock_Length(); j++){
-									if (j == stn)	continue;
-									file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+			else{
+				stn = edn = 0;
+				while (stn < lst && edn < led){		//放在共同區上
+					if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
+						break;
+					for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
+						if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
+							if (x % 2 == 1)	//01 11 -> 10 00
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+							if (x >= 2)	//10 11
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+							for (int j = 0; j < stptr->Clock_Length(); j++){
+								if (j == stn)	continue;
+								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							for (int j = 0; j < edptr->Clock_Length(); j++){
+								if (j == edn)	continue;
+								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							file << 0 << endl;
+						}
+					}
+					stn++;
+					edn++;
+				}
+				int b_point = stn;
+				for (; stn < lst; stn++){
+					for (edn = b_point; edn < led; edn++){
+						for (int x = 0; x <= 3; x++){
+							for (int y = 0; y <= 3; y++){
+								if (!Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
+									if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
+										file << '-';
+									file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+									if (x >= 2)	//10 11
+										file << '-';
+									file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+									if (y % 2 == 1)
+										file << '-';
+									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+									if (y >= 2)
+										file << '-';
+									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
+									for (int j = 0; j < stptr->Clock_Length(); j++){
+										if (j == stn)	continue;
+										file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+									}
+									for (int j = 0; j < edptr->Clock_Length(); j++){
+										if (j == edn)	continue;
+										file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+									}
+									file << 0 << endl;
 								}
-								for (int j = 0; j < edptr->Clock_Length(); j++){
-									if (j == edn)	continue;
-									file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
-								}
-								file << 0 << endl;
 							}
 						}
 					}
 				}
 			}
 		}		
-		else{	
-			while (stn < lst && edn < led){		//放在共同區上
-				if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
-					break;
-				for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
-					if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
-						if (x % 2 == 1)	//01 11 -> 10 00
-							file << '-';
-						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
-						if (x >= 2)	//10 11
-							file << '-';
-						file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-						for (int j = 0; j < stptr->Clock_Length(); j++){
-							if (j == stn)	continue;
-							file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
-						}
-						for (int j = 0; j < edptr->Clock_Length(); j++){
-							if (j == edn)	continue;
-							file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
-						}
-						file << 0 << endl;
-					}
-				}
-				stn++;
-				edn++;
-			}
+		else{
 			if (stptr->GetType() == "PI"){
 				for (edn = 0; edn < led; edn++){
 					for (int x = 0; x <= 3; x++){
@@ -1421,33 +1392,61 @@ void GenerateSAT(string filename,int year){
 					}
 				}
 			}
-			int b_point = stn;
-			for (; stn < lst; stn++){
-				for (edn = b_point; edn < led; edn++){
-					for (int x = 0; x <= 3; x++){
-						for (int y = 0; y <= 3; y++){
-							if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
-								if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
-									file << '-';
-								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
-								if (x >= 2)	//10 11
-									file << '-';
-								file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-								if (y % 2 == 1)
-									file << '-';
-								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
-								if (y >= 2)
-									file << '-';
-								file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-								for (int j = 0; j < stptr->Clock_Length(); j++){
-									if (j == stn)	continue;
-									file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+			else{
+				stn = edn = 0;
+				while (stn < lst && edn < led){		//放在共同區上
+					if (stptr->GetClockPath(stn) != edptr->GetClockPath(edn))
+						break;
+					for (int x = 0; x <= 3; x++){	//0/00 NO DCC 1/01 slow aging DCC(20%) 2/10 fast aging DCC(80%)
+						if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)x, year - ERROR)){	//Vio_Check如果沒有violation會回傳true
+							if (x % 2 == 1)	//01 11 -> 10 00
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+							if (x >= 2)	//10 11
+								file << '-';
+							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+							for (int j = 0; j < stptr->Clock_Length(); j++){
+								if (j == stn)	continue;
+								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							for (int j = 0; j < edptr->Clock_Length(); j++){
+								if (j == edn)	continue;
+								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+							}
+							file << 0 << endl;
+						}
+					}
+					stn++;
+					edn++;
+				}
+				int b_point = stn;
+				for (; stn < lst; stn++){
+					for (edn = b_point; edn < led; edn++){
+						for (int x = 0; x <= 3; x++){
+							for (int y = 0; y <= 3; y++){
+								if (Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year + ERROR) || !Vio_Check(pptr, stn, edn, (AGINGTYPE)x, (AGINGTYPE)y, year - ERROR)){
+									if (x % 2 == 1)	//01 11 -> 1[0] 0[0]
+										file << '-';
+									file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 1 << ' ';
+									if (x >= 2)	//10 11
+										file << '-';
+									file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
+									if (y % 2 == 1)
+										file << '-';
+									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 1 << ' ';
+									if (y >= 2)
+										file << '-';
+									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
+									for (int j = 0; j < stptr->Clock_Length(); j++){
+										if (j == stn)	continue;
+										file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
+									}
+									for (int j = 0; j < edptr->Clock_Length(); j++){
+										if (j == edn)	continue;
+										file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
+									}
+									file << 0 << endl;
 								}
-								for (int j = 0; j < edptr->Clock_Length(); j++){
-									if (j == edn)	continue;
-									file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
-								}
-								file << 0 << endl;
 							}
 						}
 					}
@@ -1487,10 +1486,11 @@ bool CallSatAndReadReport(){
 			cbuffer_decode[(n1 - 1) / 2]->SetDcc(DCC_M);
 	}
 	file.close();
+	int cdcc = 0;
 	for (int i = 0; i < cbuffer_decode.size();i++)
 		if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
-			cout << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
-		return true;
+			cout << ++cdcc << " : " << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
+	return true;
 }
 
 
@@ -1502,10 +1502,12 @@ double CalQuality(int year){
 		for (int j = 0; j < PathC.size(); j++){			
 			//計算時從全部可攻擊點(不是僅算被選點)					
 			double st = 1.0, ed = 10.0, mid;
+			//cout << i << ' ' << j << endl;
+			//cout << "y=" << EdgeA[i][j] << "x+" << EdgeB[i][j] << endl;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper,lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
 				double Aging_P;														
 				if (upper > AgingRate(WORST, mid))													
 					Aging_P = AgingRate(WORST, mid);
@@ -1544,15 +1546,35 @@ double CalQuality(int year){
 	}
 	return worst_all;		//改成用bound或是montecarlo的方式
 }
-
-bool RefineResult(int year){
+bool CheckImpact(PATH* pptr){
+	GATE* gptr;
+	gptr = pptr->Gate(0);
+	if (gptr->GetType() != "PI"){
+		for (int i = 0; i < gptr->Clock_Length();i++)
+			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+				return true;
+	}
+	gptr = pptr->Gate(pptr->length() - 1);
+	if (gptr->GetType() != "PO"){
+		for (int i = 0; i < gptr->Clock_Length(); i++)
+			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+				return true;
+	}
+	return false;
+}
+bool RefineResult(int year){		//加入判斷被影響點的數量 & Refine的方向
 	double early = 10000.0;
 	int earlyp = -1;
+	int catk = 0, cimp = 0;
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){	//!PathR[i].Is_Chosen() && 全部都check找最差的
+		if (CheckImpact(pptr))
+			cimp++;
+		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR)))
+			catk++;
+		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){
 			if (pptr->CheckAttack())
 				cout << "*";	
 			double st = 1.0, ed = 10, mid;
@@ -1570,9 +1592,10 @@ bool RefineResult(int year){
 			}
 		}
 	}
+	cout << endl << catk << " Paths Be Attacked." << endl;
+	cout << cimp << " Paths Be Impacted." << endl;
 	if (earlyp < 0)
 		return false;
-	cout << endl;
 	//cout << earlyp << endl;
 	fstream file;
 	file.open("sat.cnf", ios::out | ios::app);

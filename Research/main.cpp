@@ -23,7 +23,7 @@ inline double absf(double x){
 }
 
 int main(int argc, char* argv[]){
-	if (argc < 3)
+	if (argc < 5)
 		return 0;
 	srand(time(NULL));
 	string filename;
@@ -41,19 +41,8 @@ int main(int argc, char* argv[]){
 	int year = atoi(argv[3]);
 	//int year = 5;
 	ReadAgingData();
-	double MARGIN;
-	int MAX_pn = 0;
-	for (double mm = 1.0; mm < 1.2; mm += 0.01){
-		CheckPathAttackbility(year, mm, false);	//計算最多可改點的period乘數
-		if (PathC.size()>MAX_pn){
-			MARGIN = mm;
-			MAX_pn = PathC.size();
-		}
-		PathC.clear();
-	}
-	CheckPathAttackbility(year, MARGIN, true);
-	cout << "Max margin = " << MARGIN << endl;
-
+	CheckPathAttackbility(year, 1.001, true);
+	
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
