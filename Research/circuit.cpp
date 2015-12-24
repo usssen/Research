@@ -5,7 +5,7 @@
 #include "circuit.h"
 #include<stdlib.h>
 #include<algorithm>
-#define ERROR 1
+#define ERROR 0.25
 
 using namespace std;
 
@@ -440,7 +440,7 @@ double CalPreAging(double x, int a, int b, double year){
 	return EdgeA[a][b] * x + EdgeB[a][b] * (AgingRate(WORST, year) / AgingRate(WORST, 10));		//按照比例調整b
 }
 
-bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
+bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, double year){
 	GATE* stptr = pptr->Gate(0);
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
 	double clks = 0.0;
@@ -826,7 +826,7 @@ public:
 };
 
 
-bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){	
+bool ChooseVertexWithGreedyMDS(double year, double pre_rvalueb){	
 	int No_node = PathC.size();
 	static bool refresh = true;
 	static int *degree = new int[No_node], *color = new int[No_node];
@@ -870,7 +870,7 @@ bool ChooseVertexWithGreedyMDS(int year, double pre_rvalueb){
 			continue;
 		}
 		PathC[i]->SetChoose(false);
-		double w = 0;		//期望此值能夠算出和給定值之差
+		double w = 0;						//期望此值能夠算出和給定值之差
 		w += 3*EstimateAddTimes(year, i);	//加入i點後增加的解差值		
 		//w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
 		w += EstimatePSD(i);		//加入i點後增加的"類標準差"
@@ -938,7 +938,7 @@ int HashAllClockBuffer(){
 }
 
 
-void CheckPathAttackbility(int year,double margin,bool flag){		
+void CheckPathAttackbility(double year,double margin,bool flag){		
 		period = 0.0;
 		for (int i = 0; i < PathR.size(); i++){
 			double pp = (1 + AgingRate(WORST, static_cast<double>(year + ERROR)))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0)) + (1.0 + AgingRate(FF, static_cast<double>(year + ERROR)))*(PathR[i].Out_time(0) - PathR[i].In_time(0)) + (1.0 + AgingRate(DCC_NONE, static_cast<double>(year + ERROR)))*(PathR[i].GetCTH() - PathR[i].GetCTE()) + PathR[i].GetST();	//check一下
@@ -1035,12 +1035,13 @@ void CheckNoVio(double year){
 	for (int i = 0; i < PathR.size(); i++){
 		if (!Vio_Check(&PathR[i], year, AgingRate(WORST, year))){
 			cout << "Path" << i << " Violation!" << endl;
+			return;
 		}
 	}
 	cout << "No Violation!" << endl;
 }
 
-void GenerateSAT(string filename,int year){		
+void GenerateSAT(string filename,double year){		
 	fstream file;
 	fstream temp;	
 	file.open(filename.c_str(), ios::out);
@@ -1322,7 +1323,7 @@ bool CallSatAndReadReport(int flag){
 }
 
 
-double CalQuality(int year,double &up,double &low){
+double CalQuality(double year,double &up,double &low){
 	cout << "Start CalQuality" << endl;
 	up = 10.0, low = 0.0;
 	for (int i = 0; i < PathC.size(); i++){
@@ -1390,7 +1391,7 @@ bool CheckImpact(PATH* pptr){
 	}
 	return false;
 }
-bool RefineResult(int year){	
+bool RefineResult(double year){	
 	int catk = 0, cimp = 0;
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
