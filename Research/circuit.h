@@ -15,13 +15,12 @@ void CalVertexWeight();
 bool ChooseVertexWithGreedyMDS(int year,double pre_rvalue);
 int HashAllClockBuffer();
 void GenerateSAT(string filename,int year);
-bool CallSatAndReadReport();
+bool CallSatAndReadReport(int flag);
 void CheckPathAttackbility(int year,double margin,bool flag);
 double CalQuality(int year,double &upper,double &lower);
 bool RefineResult(int year);
 void EstimateTimeEV(double year);
-void CalSolMines(double year, int p);
-void ReadCpInfo(string filename,double year);
+void ReadCpInfo(string filename);
 void CheckNoVio(double year);
 
 class GATE;

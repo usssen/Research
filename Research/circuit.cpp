@@ -382,7 +382,7 @@ void ReadPath_s(string filename){
 }
 */
 
-void ReadCpInfo(string filename,double year){
+void ReadCpInfo(string filename){
 	fstream file;
 	file.open(filename.c_str());
 	map<unsigned, unsigned> mapping;	//原編號(沒有去掉PI->PO & NO_GATE的) -> PathC的編號
@@ -393,7 +393,7 @@ void ReadCpInfo(string filename,double year){
 	double a, b, cc, err;
 	string line;
 	getline(file, line);
-	while (file >> im >> jn){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j] **需加上誤差
+	while (file >> im >> jn){			// aging(j) = aging(i)*EdgeA[i][j] + EdgeB[i][j]
 		file >> line;
 		if (line == "nan"){				//斜率無窮大 => x = const => 無法推 =>跳過
 			a = b = err = 10000;
@@ -406,10 +406,8 @@ void ReadCpInfo(string filename,double year){
 			a = atof(line.c_str());
 			file >> b;
 			file >> line;
-			if (line == "nan"){						//y = b => 斜率為0 => b設為該年的最大老化值
-				cc = 0;
-				b = AgingRate(WORST, year);
-			}
+			if (line == "nan")			//y = b => 斜率為0 =>y之標準差為0 =>相關係數無窮大
+				cc = 0;				
 			else
 				cc = atof(line.c_str());
 			file >> err;
@@ -425,15 +423,21 @@ void ReadCpInfo(string filename,double year){
 	file.close();
 }
 
-void CalPreInv(double x, double &upper, double &lower, int a, int b){		//計算預測區間
+void CalPreInv(double x, double &upper, double &lower, int a, int b,double year){		//計算預測區間
 	if (EdgeA[a][b] > 9999){
 		upper = lower = 10000;
 		return;
 	}	
 	double dis = 1.96;	//+-多少個標準差 90% 1.65 95% 1.96 99% 2.58
-	double y1 = EdgeA[a][b] * x + EdgeB[a][b];
-	upper = y1 + ser[a][b] * dis;
-	lower = y1 - ser[a][b] * dis;
+	double y1 = EdgeA[a][b] * x + EdgeB[a][b] * (AgingRate(WORST, year) / AgingRate(WORST, 10));	
+	upper = y1 + ser[a][b] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10));
+	lower = y1 - ser[a][b] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10));		//按照比例調整b及標準誤
+}
+
+double CalPreAging(double x, int a, int b, double year){
+	if (EdgeA[a][b] > 9999)
+		return 10000;
+	return EdgeA[a][b] * x + EdgeB[a][b] * (AgingRate(WORST, year) / AgingRate(WORST, 10));		//按照比例調整b
 }
 
 bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, int year){
@@ -607,7 +611,8 @@ inline double absl(double x){
 void EstimateTimeEV(double year){
 	int No_node = PathC.size();
 	for (int i = 0; i < No_node; i++){
-		cout << "NODE " << i + 1 << '/' << No_node << endl;
+		cout << '\r';
+		printf("NODE: %3d/%3d", i + 1, No_node);
 		PATH* pptr = PathC[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
@@ -627,8 +632,8 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//從第k個path點推到第i個path 找第i個path的期望值
-								if (EdgeA[k][i]>1)
+								double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year); //從第k個path點推到第i個path 找第i個path的期望值
+								if (Aging_P>AgingRate(WORST,mid))
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
 									st = mid;
@@ -651,8 +656,8 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
-								if (EdgeA[k][i]>1)
+								double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+								if (Aging_P>AgingRate(WORST, mid))
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
 									st = mid;
@@ -676,8 +681,8 @@ void EstimateTimeEV(double year){
 							double st = year - ERROR, ed = year + ERROR, mid;
 							while (ed - st>0.0001){
 								mid = (st + ed) / 2;
-								double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
-								if (EdgeA[k][i]>1)
+								double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+								if (Aging_P>AgingRate(WORST, mid))
 									Aging_P = AgingRate(WORST, mid);
 								if (Vio_Check(pptr, mid, Aging_P))
 									st = mid;
@@ -703,8 +708,8 @@ void EstimateTimeEV(double year){
 									double st = year - ERROR, ed = year + ERROR, mid;
 									while (ed - st>0.0001){
 										mid = (st + ed) / 2;
-										double Aging_P = AgingRate(WORST, mid)*EdgeA[k][i] + EdgeB[k][i];	//
-										if (EdgeA[k][i]>1)
+										double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+										if (Aging_P>AgingRate(WORST, mid))
 											Aging_P = AgingRate(WORST, mid);
 										if (Vio_Check(pptr, mid, Aging_P))
 											st = mid;
@@ -732,6 +737,7 @@ void EstimateTimeEV(double year){
 		pptr->SetEstimateTime(max);
 		pptr->SetPSD(max2);
 	}
+	cout << endl;
 }
 
 double EstimateAddTimes(double year,int p){	//p是要加入的點
@@ -757,210 +763,6 @@ double EstimatePSD(int p){
 		return 0.0;
 	
 	return newmax - max;
-}
-
-struct PATHSOL{
-	GATE *a,*b;
-	AGINGTYPE ta, tb;
-	PATHSOL(GATE* x,GATE* y,AGINGTYPE m,AGINGTYPE n) :a(x),b(y),ta(m),tb(n){}
-};
-
-bool CheckSolConflict(PATHSOL f, PATH* p){
-	GATE* stptr = p->Gate(0);
-	GATE* edptr = p->Gate(p->length()-1);
-	if (f.a != NULL){
-		if (f.a->GetDcc() !=DCC_NONE && f.ta!=f.a->GetDcc())
-			return false;
-		f.a->SetDcc(f.ta);
-	}
-	if (f.b != NULL){
-		if (f.b->GetDcc() != DCC_NONE && f.tb != f.b->GetDcc())
-			return false;
-		f.b->SetDcc(f.tb);
-	}
-	int c = 0;	//路上通過的有加DCC的gate數
-	for (int i = 0; i < stptr->Clock_Length(); i++){
-		if (stptr->GetClockPath(i)->GetDcc() != DCC_NONE)
-			c++;
-	}
-	if (c >= 2)
-		return false;
-	c = 0;
-	for (int i = 0; i < edptr->Clock_Length(); i++){
-		if (edptr->GetClockPath(i)->GetDcc() != DCC_NONE)
-			c++;
-	}
-	if (c >= 2)
-		return false;
-	return true;
-}
-
-inline void DCCrestore(PATHSOL f){
-	if (f.a)
-		f.a->SetDcc(DCC_NONE);
-	if (f.b)
-		f.b->SetDcc(DCC_NONE);
-}
-
-double EstimateSolMines(int p){	//計算所有現有點在加入後少的解量之幾何平均
-	double res = 1.0;
-	int c = 0;
-	for (int i = 0; i < PathC.size(); i++){
-		if (PathC[i]->Is_Chosen()){
-			res *= (double)conf[p][i] / ((double)conf[p][p] * (double)conf[i][i]);
-			c++;
-		}
-	}
-	if (c == 0 || res<1)
-		return 0;
-	res = pow(res, 1 / (double)c);	
-	return res;
-}
-
-void CalSolMines(double year, int p){
-	int No_node = PathC.size();		//先計算路徑p的解並暫存
-	vector<PATHSOL> tempsol;
-	tempsol.clear();
-	PATH *pptr = PathC[p];
-	GATE *stptr = pptr->Gate(0), *edptr = pptr->Gate(pptr->length()-1);
-
-	if (stptr->GetType() == "PI"){
-		for (int i = 0; i < edptr->Clock_Length(); i++){
-			for (int x = 1; x < 4; x++){	//只考慮有放的狀況
-				edptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
-				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-					PATHSOL pp(NULL, edptr->GetClockPath(i), DCC_NONE, (AGINGTYPE)x);
-					tempsol.push_back(pp);
-				}
-				edptr->GetClockPath(i)->SetDcc(DCC_NONE);
-			}
-		}
-	}
-	else if (edptr->GetType() == "PO"){
-		for (int i = 0; i < stptr->Clock_Length(); i++){
-			for (int x = 1; x < 4; x++){
-				stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
-				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-					PATHSOL pp(stptr->GetClockPath(i), NULL, (AGINGTYPE)x, DCC_NONE);
-					tempsol.push_back(pp);
-				}
-				stptr->GetClockPath(i)->SetDcc(DCC_NONE);
-			}
-		}
-	}
-	else{
-		int branch = 0;
-		while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
-			for (int x = 1; x < 4; x++){
-				stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
-				if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-					PATHSOL pp(stptr->GetClockPath(branch), NULL, (AGINGTYPE)x, DCC_NONE);
-					tempsol.push_back(pp);
-				}
-				stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
-			}
-			branch++;
-		}
-		for (int i = branch; i < stptr->Clock_Length(); i++){
-			for (int j = branch; j < edptr->Clock_Length(); j++){
-				for (int x = 0; x < 4; x++){
-					for (int y = 0; y < 4; y++){
-						if (x == 0 && y == 0)	continue;												
-						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
-						stptr->GetClockPath(i)->SetDcc((AGINGTYPE)x);
-						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-							PATHSOL pp(stptr->GetClockPath(i), edptr->GetClockPath(j), (AGINGTYPE)x, (AGINGTYPE)y);
-							tempsol.push_back(pp);
-						}
-						stptr->GetClockPath(i)->SetDcc(DCC_NONE);
-						edptr->GetClockPath(j)->SetDcc(DCC_NONE);
-					}
-				}
-			}
-		}
-	}	
-	conf[p][p] = tempsol.size();	//path p的解數 => conf[a][b]/conf[a][a]*conf[b][b] 之幾何平均 => 剩下解的平均比例
-	for (int i = p+1; i < PathC.size(); i++)
-		conf[p][i] = conf[i][p] = 0;
-
-	for (int f = 0; f < tempsol.size(); f++){	
-		for (int i = p + 1; i < No_node; i++){
-			int sc = 0;
-			pptr = PathC[i];
-			stptr = pptr->Gate(0);
-			edptr = pptr->Gate(pptr->length() - 1);			
-			if (stptr->GetType() == "PI"){
-				for (int k = 0; k < edptr->Clock_Length(); k++){
-					for (int x = 1; x < 4; x++){
-						edptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
-						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
-							if (!CheckSolConflict(tempsol[f], pptr)){
-								conf[p][i]++;
-								conf[i][p]++;
-							}
-							sc++;
-						}
-						DCCrestore(tempsol[f]);
-						edptr->GetClockPath(k)->SetDcc(DCC_NONE);
-					}
-				}
-			}
-			else if (edptr->GetType() == "PO"){
-				for (int k = 0; k < stptr->Clock_Length(); k++){
-					for (int x = 1; x < 4; x++){
-						stptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
-						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){							
-							if (!CheckSolConflict(tempsol[f], pptr)){
-								conf[p][i]++;
-								conf[i][p]++;
-							}
-							sc++;
-						}
-						DCCrestore(tempsol[f]);
-						stptr->GetClockPath(k)->SetDcc(DCC_NONE);
-					}
-				}
-			}
-			else{
-				int branch = 0;
-				while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
-					for (int x = 1; x < 4; x++){
-						stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
-						if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
-							if (!CheckSolConflict(tempsol[f], pptr)){
-								conf[p][i]++;
-								conf[i][p]++;
-							}
-							sc++;
-						}
-						stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
-					}
-					branch++;
-				}
-				for (int k = branch; k < stptr->Clock_Length(); k++){
-					for (int j = branch; j < edptr->Clock_Length(); j++){
-						for (int x = 0; x < 4; x++){
-							for (int y = 0; y < 4; y++){
-								if (x == 0 && y == 0)	continue;								
-								edptr->GetClockPath(j)->SetDcc((AGINGTYPE)y);
-								stptr->GetClockPath(k)->SetDcc((AGINGTYPE)x);
-								if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){									
-									if (!CheckSolConflict(tempsol[f], pptr)){
-										conf[p][i]++;
-										conf[i][p]++;
-									}
-									sc++;
-								}
-								DCCrestore(tempsol[f]);
-								stptr->GetClockPath(k)->SetDcc(DCC_NONE);
-								edptr->GetClockPath(j)->SetDcc(DCC_NONE);
-							}
-						}
-					}
-				}
-			}		
-		}
-	}		
 }
 
 struct PN_W{
@@ -1479,7 +1281,7 @@ void GenerateSAT(string filename,int year){
 	file.close();
 }
 
-bool CallSatAndReadReport(){
+bool CallSatAndReadReport(int flag){
 	//cout << "Start Call SAT" << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		GATE* stptr = PathC[i]->Gate(0);
@@ -1489,7 +1291,11 @@ bool CallSatAndReadReport(){
 		for (int i = 0; i < edptr->Clock_Length(); i++)
 			edptr->GetClockPath(i)->SetDcc(DCC_NONE);
 	}
-	system("minisat sat.cnf temp.sat");
+	if (flag == 1)
+		system("minisat best.cnf temp.sat");
+	else
+		system("minisat sat.cnf temp.sat");
+	
 	fstream file;
 	file.open("temp.sat", ios::in);
 	string line;
@@ -1529,7 +1335,7 @@ double CalQuality(int year,double &up,double &low){
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper,lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, year);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
 				double Aging_P;														
 				if (upper > AgingRate(WORST, mid))													
 					Aging_P = AgingRate(WORST, mid);
@@ -1546,7 +1352,7 @@ double CalQuality(int year,double &up,double &low){
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper, lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j);				
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, year);
 				double Aging_P;														//lower bound
 				if (lower > AgingRate(WORST, mid))									//可能<0 待實驗狀況看看
 					Aging_P = AgingRate(WORST, mid);
@@ -1584,17 +1390,15 @@ bool CheckImpact(PATH* pptr){
 	}
 	return false;
 }
-bool RefineResult(int year){		//加入判斷被影響點的數量 & Refine的方向
-	double early = 10000.0;
-	int earlyp = -1;
+bool RefineResult(int year){	
 	int catk = 0, cimp = 0;
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		if (CheckImpact(pptr))
+		if (CheckImpact(pptr))	//有DCC放在clock path上
 			cimp++;
-		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR)))
+		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR)))		//lifetime降到期限內
 			catk++;
 		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){
 			if (pptr->CheckAttack())
@@ -1607,63 +1411,30 @@ bool RefineResult(int year){		//加入判斷被影響點的數量 & Refine的方向
 				else
 					ed = mid;
 			}
-			cout << i << " = " << mid << ' ';
-			if (early > mid){
-				early = mid;
-				earlyp = i;
-			}
+			cout << i << " = " << mid << ' ';			
 		}
 	}
 	cout << endl << catk << " Paths Be Attacked." << endl;
 	cout << cimp << " Paths Be Impacted." << endl;
-	if (earlyp < 0)
-		return false;
-	//cout << earlyp << endl;
+	
 	fstream file;
+	fstream solution;
 	file.open("sat.cnf", ios::out | ios::app);
+	solution.open("temp.sat", ios::in);
 	if (!file)
 		cout << "fail to open sat.cnf" << endl;
-	PATH* pptr = &PathR[earlyp];
-	if (pptr->Gate(0)->GetType() != "PI"){
-		GATE* stptr = pptr->Gate(0);
-		int ls = stptr->Clock_Length(), i;
-		for (i = 0; i < ls && stptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++);
-		if (i < ls){
-			switch (stptr->GetClockPath(i)->GetDcc()){
-			case DCC_S:
-				file << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 1) << ' ' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 2 << ' ' << '0' << endl;
-				break;
-			case DCC_F:
-				file << cbuffer_code[stptr->GetClockPath(i)] * 2 + 1 << ' ' << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
-				break;
-			case DCC_M:
-				file << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 1) << ' ' << -(cbuffer_code[stptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
-				break;
-			default:
-				break;
-			}
-		}
+	if (!solution)
+		cout << "fail to open temp.sat" << endl;
+	string line;
+	getline(solution, line);
+	if (line.find("UNSAT") != string::npos)
+		return false;	
+	int dccno;
+	while (solution >> dccno){
+		file << -dccno << ' ';
 	}
-	if (pptr->Gate(pptr->length()-1)->GetType() != "PO"){
-		GATE* edptr = pptr->Gate(pptr->length() - 1);
-		int le = edptr->Clock_Length(), i;
-		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++);
-		if (i < le){
-			switch (edptr->GetClockPath(i)->GetDcc()){
-			case DCC_S:
-				file << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 1) << ' ' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 2 << ' ' << '0' << endl;
-				break;
-			case DCC_F:
-				file << cbuffer_code[edptr->GetClockPath(i)] * 2 + 1 << ' ' << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
-				break;
-			case DCC_M:
-				file << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 1) << ' ' << -(cbuffer_code[edptr->GetClockPath(i)] * 2 + 2) << ' ' << '0' << endl;
-				break;
-			default:
-				break;
-			}
-		}
-	}
+	file << endl;
 	file.close();
+	solution.close();
 	return true;
 }

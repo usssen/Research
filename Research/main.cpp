@@ -29,8 +29,10 @@ inline double maxf(double a, double b){
 }
 
 int main(int argc, char* argv[]){
-	if (argc < 5)
+	if (argc < 5){
+		cout << "./research [circuit] [path report] [CPInfo] [life time] [restart] [refine]" << endl;
 		return 0;
+	}
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
@@ -46,7 +48,7 @@ int main(int argc, char* argv[]){
 	cout << "finished." << endl;
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
-	int year = atoi(argv[3]);
+	int year = atoi(argv[4]);
 	//int year = 5;
 	ReadAgingData();
 	CheckPathAttackbility(year, 1.001, true);
@@ -71,25 +73,18 @@ int main(int argc, char* argv[]){
 		conf[i] = new int[ss];
 		ser[i] = new double[ss];
 	}
-	filename = argv[5];
+	filename = argv[3];
 	//filename = "s38584.cp";
 	cout << "Reading CPInfo...";
-	ReadCpInfo(filename, year);
+	ReadCpInfo(filename);
 	cout << "finisned." << endl;
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);	
-	/*
-	cout << "Initial Estimate Soluation" << endl;
-	for (int i = 0; i < PathC.size(); i++){
-		CalSolMines(year, i);		
-		cout << 100*(double)i / (double)PathC.size() << '%' << endl;
-	}
-	*/
 	bool* bestnode = new bool[PathC.size()];
 	double bestup = 100, bestlow = -100;
 	string s;
 	fstream fileres;
-	for (int tryi = 0; tryi < atoi(argv[4]); tryi++){
+	for (int tryi = 0; tryi < atoi(argv[5]); tryi++){
 		if (tryi>0)
 			ChooseVertexWithGreedyMDS(year, -1.0);
 		int co = 0;
@@ -98,7 +93,7 @@ int main(int argc, char* argv[]){
 			if (!ChooseVertexWithGreedyMDS(year, 1.0))
 				break;
 			GenerateSAT("sat.cnf", year);
-			CallSatAndReadReport();
+			CallSatAndReadReport(0);
 			fileres.open("temp.sat");
 			getline(fileres, s);
 			fileres.close();
@@ -114,16 +109,14 @@ int main(int argc, char* argv[]){
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			for (int i = 1; i <= 5; i++){
-				if (!RefineResult(year)){
-					//cout << "Result is in limit!" << endl;
+			for (int i = 1; i <= atoi(argv[6]); i++){
+				if (!RefineResult(year))	
 					break;
-				}
-				//cout << "Time " << i << " : " << endl;
-				if (!CallSatAndReadReport()){
+				cout << "Refine #" << i << " : " << endl;
+				if (!CallSatAndReadReport(0)){
 					//cout << "Can't Refine Anymore" << endl;
 					break;
-				}
+				}				
 				CalQuality(year,upper,lower);							
 				if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
 					for (int i = 0; i < PathC.size(); i++)
@@ -135,24 +128,29 @@ int main(int argc, char* argv[]){
 				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 			}
 		}
-	}	
-	cout << "Start Output Best Result." << endl;
+	}
+	bestup = 100, bestlow = -100;
+	cout << "Final Refinement" << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);
 	GenerateSAT("sat.cnf", year);
-	CallSatAndReadReport();
+	CallSatAndReadReport(0);
+	int t = 10;
 	do{
 		double upper, lower;
 		CalQuality(year, upper, lower);		
 		if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
 			bestlow = lower;
 			bestup = upper;
+			system("cp sat.cnf best.cnf");
 		}
 		cout << "Q = " << upper << " ~ " << lower << endl;
 		cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 		if (!RefineResult(year))
 			break;
-	} while (CallSatAndReadReport());
+	} while (t--&&CallSatAndReadReport(0));
+	cout << endl << endl << "Final Result : " << endl;
+	CallSatAndReadReport(1);
 	RefineResult(year);
 	cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 	return 0;
