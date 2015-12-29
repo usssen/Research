@@ -15,7 +15,6 @@ extern vector<PATH*> PathC;
 extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
-extern int **conf;
 extern double **ser;
 double period;
 

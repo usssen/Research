@@ -13,7 +13,6 @@ double **EdgeA;
 double **EdgeB;
 double **cor;
 double **ser;
-int **conf;
 vector<PATH*> PathC;
 
 inline double absf(double x){
@@ -30,7 +29,7 @@ inline double maxf(double a, double b){
 
 int main(int argc, char* argv[]){
 	if (argc < 5){
-		cout << "./research [circuit] [path report] [CPInfo] [life time] [restart] [refine]" << endl;
+		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times]" << endl;
 		return 0;
 	}
 	srand(time(NULL));
@@ -62,15 +61,13 @@ int main(int argc, char* argv[]){
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
 	EdgeB = new double*[ss];		
-	cor = new double*[ss];			//相關係數
-	conf = new int*[ss];			//互斥解數
+	cor = new double*[ss];			//相關係數	
 	ser = new double*[ss];	//error
 
 	for (int i = 0; i < ss; i++){
 		EdgeA[i] = new double[ss];
 		EdgeB[i] = new double[ss];
-		cor[i] = new double[ss];
-		conf[i] = new int[ss];
+		cor[i] = new double[ss];		
 		ser[i] = new double[ss];
 	}
 	filename = argv[3];
