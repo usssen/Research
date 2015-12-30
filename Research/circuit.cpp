@@ -16,6 +16,7 @@ extern double **EdgeA;
 extern double **EdgeB;
 extern double **cor;
 extern double **ser;
+extern double info[5];
 double period;
 
 
@@ -945,8 +946,10 @@ void CheckPathAttackbility(double year,double margin,bool flag){
 			if (pp>period)
 				period = pp;
 		}
-		if (flag)
+		if (flag){
 			cout << "Clock Period = " << period << endl;
+			info[0] = period;
+		}
 	for (int i = 0; i < PathR.size(); i++){				
 		PATH* pptr = &PathR[i];
 		pptr->SetAttack(false);
@@ -1025,6 +1028,7 @@ void CheckPathAttackbility(double year,double margin,bool flag){
 		for (int i = 0; i < PathC.size(); i++)
 			cout << PathC[i]->Gate(0)->GetName() << " -> " << PathC[i]->Gate(PathC[i]->length() - 1)->GetName() << " Length = " << PathC[i]->length() << endl;
 		cout << aa << ' ' << bb << ' ' << cc << ' ' << dd << endl;
+		info[1] = aa, info[2] = bb, info[3] = cc, info[4] = dd;
 	}
 	return;
 }

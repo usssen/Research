@@ -13,6 +13,7 @@ double **EdgeA;
 double **EdgeB;
 double **cor;
 double **ser;
+double info[5];
 vector<PATH*> PathC;
 
 inline double absf(double x){
@@ -126,6 +127,10 @@ int main(int argc, char* argv[]){
 			}
 		}
 	}
+	if (bestup>10){
+		cout << "No Solution!" << endl;
+		return 0;
+	}
 	bestup = 100, bestlow = -100;
 	cout << "Final Refinement" << endl;
 	for (int i = 0; i < PathC.size(); i++)
@@ -150,5 +155,9 @@ int main(int argc, char* argv[]){
 	CallSatAndReadReport(1);
 	RefineResult(year);
 	cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+	cout << "Clock Period = " << info[0] << endl;
+	for (int i = 1; i <= 4; i++)
+		cout << info[i] << ' ';
+	cout << endl;
 	return 0;
 }
