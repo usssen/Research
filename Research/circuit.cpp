@@ -591,7 +591,7 @@ inline double absl(double x){
 }
 
 double thershold = 0.9;	//R平方
-double t_slope = 0.95;
+//double t_slope = 0.95;
 
 bool Check_Connect(int a, int b,double year){	
 	if (EdgeA[a][b] > 9999)
@@ -602,7 +602,7 @@ bool Check_Connect(int a, int b,double year){
 	//	return Check_Connect(b, a,year);	
 	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
 		return false;
-	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>0.02)
+	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>0.005)
 		return false;
 	//if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數 =>不一定 只要老化率相近即可
 	//	return false;
@@ -1451,16 +1451,16 @@ void PrintStatus(double year){
 	getline(cin, command);
 	getline(cin, command);
 	while (command.find("quit") == string::npos){
-		if (command.find("print impact") != string::npos){
+		if (command.find("impact") != string::npos){
 			for (int i = 0; i < PathR.size(); i++){
 				if (CheckImpact(&PathR[i]))
-					cout << PathR[i].No() << ' ' << endl;
+					cout << PathR[i].No() << ' ';
 			}
 			cout << endl;
 		}
-		else if (command.find("print victim") !=string::npos){
+		else if (command.find("victim") !=string::npos){
 			for (int i = 0; i < PathC.size(); i++){
-				if (!Vio_Check(PathC[i],year,AgingRate(WORST,year+ERROR)))
+				if (!Vio_Check(PathC[i],year+ERROR,AgingRate(WORST,year+ERROR)))
 					cout << PathC[i]->No() << ' ';
 			}
 			cout << endl;
@@ -1485,6 +1485,64 @@ void PrintStatus(double year){
 					cout << AgingRate(WORST, year) << " -> " << lower << " ~ " << upper << endl;
 				}
 			}
+		}
+		else if (command.find("unattack") != string::npos){
+			for (int i = 0; i < PathC.size(); i++){
+				if (Vio_Check(PathC[i], year + ERROR, AgingRate(WORST, year + ERROR)))
+					cout << PathC[i]->No() << ' ';
+			}
+			cout << endl;
+		}
+		else if (command.find("push") != string::npos){
+			unsigned a, ac;
+			a = atoi(command.c_str() + 5);
+			cout << a << endl;
+			for (int i = 0; i < PathC.size(); i++){
+				if (PathC[i]->No() == a){
+					ac = i;
+					break;
+				}
+			}
+			double upper, lower;
+			for (int i = 0; i < PathC.size(); i++){
+				if (Vio_Check(PathC[i], year+ERROR, AgingRate(WORST, year+ERROR)))	//只print有機會攻擊成功的
+					continue;
+				if (EdgeA[i][ac] >9999)
+					cout << "INF" << endl;
+				else{
+					cout << "Ag" << PathC[i]->No() << " = " << EdgeA[ac][i] << "Ag" << a << " + " << EdgeB[ac][i] << " +- " << ser[ac][i] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10)) << endl;
+					CalPreInv(AgingRate(WORST, year), upper, lower, i, ac, year);
+					cout << AgingRate(WORST, year)*100 << "% -> " << lower * 100 << "% ~ " << upper * 100 << '%' << endl;
+					double st = 1.0, ed = 10.0,mid;
+					while (ed - st > 0.0001){
+						mid = (st + ed) / 2;
+						CalPreInv(AgingRate(WORST, mid), upper, lower, i, ac, mid);
+						if (Vio_Check(PathC[i], mid, upper))
+							st = mid;
+						else
+							ed = mid;
+					}
+					cout << mid << " ~ ";
+					st = 1.0, ed = 10.0;
+					while (ed - st > 0.0001){
+						mid = (st + ed) / 2;
+						CalPreInv(AgingRate(WORST, mid), upper,lower, i, ac, mid);
+						if (Vio_Check(PathC[i], mid,lower))
+							st = mid;
+						else
+							ed = mid;
+					}
+					cout << mid << endl;
+				}
+			}
+		}
+		else if (command.find("count edge") != string::npos){
+			int count = 0;
+			for (int i = 0; i < PathC.size();i++)
+				for (int j = i + 1; j < PathC.size();j++)
+					if (Check_Connect(i, j, year))
+						count++;
+			cout << "Edge : " << count << endl;
 		}
 		getline(cin, command);
 	}
