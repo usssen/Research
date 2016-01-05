@@ -28,6 +28,36 @@ inline double maxf(double a, double b){
 	return b;
 }
 
+inline double minf(double a, double b){
+	if (a < b)
+		return a;
+	return b;
+}
+
+void swap(double &a, double &b){
+	double c = a;
+	a = b;
+	b = a;
+}
+
+bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,double n){
+	if (maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n)) < 0.001){
+		if (minf(absf(u1 - n), absf(l1 - n)) < minf(absf(u2 - n), absf(l2 - n))){
+			bu = u1, bl = l1;
+			return false;
+		}
+		bu = u2, bl = l2;
+		return true;
+	}
+	if (maxf(absf(u1 - n), absf(l1 - n)) < maxf(absf(u2 - n), absf(l2 - n))){
+		bu = u1, bl = l1;
+		return false;
+	}
+	bu = u2, bl = l2;
+	return true;
+}
+
+
 int main(int argc, char* argv[]){
 	if (argc < 5){
 		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times]" << endl;
@@ -57,7 +87,7 @@ int main(int argc, char* argv[]){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
-	CheckNoVio(year + 0.25);
+	CheckNoVio(year + 1);
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
@@ -99,11 +129,9 @@ int main(int argc, char* argv[]){
 				break;
 			double upper, lower;
 			CalQuality(year, upper, lower);
-			if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
+			if (BInv(bestup,bestlow,bestup,bestlow,upper,lower,year)){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
-				bestlow = lower;
-				bestup = upper;
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
@@ -116,11 +144,9 @@ int main(int argc, char* argv[]){
 					break;
 				}				
 				CalQuality(year,upper,lower);							
-				if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
+				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
 					for (int i = 0; i < PathC.size(); i++)
-						bestnode[i] = PathC[i]->Is_Chosen();
-					bestlow = lower;
-					bestup = upper;
+						bestnode[i] = PathC[i]->Is_Chosen();					
 				}
 				cout << "Q = " << upper << " ~ " << lower << endl;
 				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
@@ -141,9 +167,7 @@ int main(int argc, char* argv[]){
 	do{
 		double upper, lower;
 		CalQuality(year, upper, lower);		
-		if (maxf(absf(bestup - static_cast<double>(year)), absf(bestlow - static_cast<double>(year))) > maxf(absf(upper - static_cast<double>(year)), absf(lower - static_cast<double>(year)))){
-			bestlow = lower;
-			bestup = upper;
+		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){			
 			system("cp sat.cnf best.cnf");
 		}
 		cout << "Q = " << upper << " ~ " << lower << endl;
@@ -159,5 +183,9 @@ int main(int argc, char* argv[]){
 	for (int i = 1; i <= 4; i++)
 		cout << info[i] << ' ';
 	cout << endl;
+	cout << "Enter the year : " << endl;
+	double y;
+	cin >> y;
+	PrintStatus(y);
 	return 0;
 }

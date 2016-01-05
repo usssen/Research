@@ -22,6 +22,7 @@ bool RefineResult(double year);
 void EstimateTimeEV(double year);
 void ReadCpInfo(string filename);
 void CheckNoVio(double year);
+void PrintStatus(double year);
 
 class GATE;
 
@@ -151,7 +152,7 @@ private:
 	bool attackable;
 	bool safe;
 	bool choose;
-	unsigned no;
+	unsigned no;	
 	PATHTYPE type;
 public:
 	PATH():attackable(false),choose(false){
@@ -201,7 +202,7 @@ public:
 	void SetPSD(double t) { psd = t; }
 	double GetPSD(){ return psd; }
 	void SetSafe(bool s){ safe = s; }
-	bool IsSafe(){ return safe; }
+	bool IsSafe(){ return safe; }	
 };
 
 

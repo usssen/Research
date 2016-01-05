@@ -5,7 +5,7 @@
 #include "circuit.h"
 #include<stdlib.h>
 #include<algorithm>
-#define ERROR 0.25
+#define ERROR 1
 
 using namespace std;
 
@@ -423,21 +423,21 @@ void ReadCpInfo(string filename){
 	file.close();
 }
 
-void CalPreInv(double x, double &upper, double &lower, int a, int b,double year){		//計算預測區間
+void CalPreInv(double x, double &upper, double &lower, int a, int b,double year){		//計算預測區間,y = ax+b 是用>100%(加上原本的值)去算
 	if (EdgeA[a][b] > 9999){
 		upper = lower = 10000;
 		return;
 	}	
 	double dis = 1.96;	//+-多少個標準差 90% 1.65 95% 1.96 99% 2.58
-	double y1 = EdgeA[a][b] * x + EdgeB[a][b] * (AgingRate(WORST, year) / AgingRate(WORST, 10));	
-	upper = y1 + ser[a][b] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10));
-	lower = y1 - ser[a][b] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10));		//按照比例調整b及標準誤
+	double y1 = EdgeA[a][b] * (x + 1) + EdgeB[a][b] * ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10)));
+	upper = y1 + ser[a][b] * dis* ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10))) - 1;
+	lower = y1 - ser[a][b] * dis* ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10))) - 1;		//按照比例調整b及標準誤
 }
 
 double CalPreAging(double x, int a, int b, double year){
 	if (EdgeA[a][b] > 9999)
 		return 10000;
-	return EdgeA[a][b] * x + EdgeB[a][b] * (AgingRate(WORST, year) / AgingRate(WORST, 10));		//按照比例調整b
+	return EdgeA[a][b] * (x + 1) + EdgeB[a][b] * ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10))) - 1;		//按照比例調整b
 }
 
 bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, double year){
@@ -584,28 +584,29 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 	}
 }
 
-double thershold = 0.9;	//R平方
-double t_slope = 0.95;
-
-bool Check_Connect(int a, int b){	
-	if (EdgeA[a][b] > 9999)
-		return false;
-	if (cor[a][b]<0)	//負相關
-		return false;
-	if (EdgeA[a][b] > 1)
-		return Check_Connect(b, a);	
-	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
-		return false;
-	if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數
-		return false;
-	return true;
-}
-
-
 inline double absl(double x){
 	if (x < 0)
 		return -x;
 	return x;
+}
+
+double thershold = 0.9;	//R平方
+double t_slope = 0.95;
+
+bool Check_Connect(int a, int b,double year){	
+	if (EdgeA[a][b] > 9999)
+		return false;
+	if (cor[a][b]<0)	//負相關
+		return false;
+	//if (EdgeA[a][b] > 1)
+	//	return Check_Connect(b, a,year);	
+	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
+		return false;
+	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>0.02)
+		return false;
+	//if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數 =>不一定 只要老化率相近即可
+	//	return false;
+	return true;
 }
 
 void EstimateTimeEV(double year){
@@ -844,7 +845,7 @@ bool ChooseVertexWithGreedyMDS(double year, double pre_rvalueb){
 			color[i] = 1;			
 			nochoose[i] = false;			
 			for (int j = 0; j < No_node; j++){				//注意可能有在CPInfo中濾掉此處未濾掉的
-				if (Check_Connect(i, j))				
+				if (Check_Connect(i, j,year))				
 					degree[i]++;
 			}			
 		}
@@ -889,9 +890,9 @@ bool ChooseVertexWithGreedyMDS(double year, double pre_rvalueb){
 	}
 	mini = cand[ii].pn;	
 	for (int i = 0; i < No_node; i++){
-		if (Check_Connect(mini, i) && color[i] == 1){
+		if (Check_Connect(mini, i,year) && color[i] == 1){
 			for (int j = 0; j < No_node; j++){
-				if (Check_Connect(i, j) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
+				if (Check_Connect(i, j,year) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
 					degree[j]--;
 			}
 			color[i] = 0;	//被選點的隔壁改為灰
@@ -1399,11 +1400,12 @@ bool RefineResult(double year){
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		GATE* stptr = pptr->Gate(0);
-		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);		
 		if (CheckImpact(pptr))	//有DCC放在clock path上
 			cimp++;
-		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR)))		//lifetime降到期限內
-			catk++;
+		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR))){		//lifetime降到期限內
+			catk++;			
+		}
 		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){
 			if (pptr->CheckAttack())
 				cout << "*";	
@@ -1441,4 +1443,49 @@ bool RefineResult(double year){
 	file.close();
 	solution.close();
 	return true;
+}
+
+void PrintStatus(double year){
+	string command;
+	const double dis = 1.96;
+	getline(cin, command);
+	getline(cin, command);
+	while (command.find("quit") == string::npos){
+		if (command.find("print impact") != string::npos){
+			for (int i = 0; i < PathR.size(); i++){
+				if (CheckImpact(&PathR[i]))
+					cout << PathR[i].No() << ' ' << endl;
+			}
+			cout << endl;
+		}
+		else if (command.find("print victim") !=string::npos){
+			for (int i = 0; i < PathC.size(); i++){
+				if (!Vio_Check(PathC[i],year,AgingRate(WORST,year+ERROR)))
+					cout << PathC[i]->No() << ' ';
+			}
+			cout << endl;
+		}
+		else if (command.find("cc")!=string::npos){
+			unsigned a,ac;
+			a = atoi(command.c_str() + 3);
+			cout << a << endl;
+			for (int i = 0; i < PathC.size(); i++){
+				if (PathC[i]->No() == a){
+					ac = i;
+					break;
+				}
+			}
+			double upper, lower;
+			for (int i = 0; i < PathC.size(); i++){
+				if (EdgeA[i][ac] >9999)
+					cout << "INF" << endl;
+				else{
+					cout << "Ag" << a << " = " << EdgeA[i][ac] << "Ag" << PathC[i]->No() << " + " << EdgeB[i][ac] << " +- " << ser[i][ac] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10)) << endl;
+					CalPreInv(AgingRate(WORST, year), upper, lower, i, ac, year);
+					cout << AgingRate(WORST, year) << " -> " << lower << " ~ " << upper << endl;
+				}
+			}
+		}
+		getline(cin, command);
+	}
 }
