@@ -885,7 +885,7 @@ bool ChooseVertexWithGreedyMDS(double year, double pre_rvalueb){
 	}
 	sort(cand.begin(), cand.end(), PN_W_comp);
 	int ii = 0;
-	while (ii < cand.size() - 1 && (rand() % 10) >= 9){	//10%的機會跳到較差的解
+	while (ii < cand.size() - 1 && (rand() % 10) >= 7){	//10%的機會跳到較差的解
 		ii++;
 	}
 	mini = cand[ii].pn;	
@@ -1543,6 +1543,31 @@ void PrintStatus(double year){
 					if (Check_Connect(i, j, year))
 						count++;
 			cout << "Edge : " << count << endl;
+		}
+		else if (command.find("count group") != string::npos){
+			bool *used = new bool[PathC.size()];
+			vector<int>gsize;
+			for (int i = 0; i < PathC.size(); i++)
+				used[i] = false;
+			for (int i = 0; i < PathC.size(); i++){
+				if (used[i])
+					continue;
+				gsize.push_back(1);
+				used[i] = false;
+				for (int j = i + 1; j < PathC.size(); j++){
+					if (Check_Connect(i, j, year)){
+						used[j] = true;
+						gsize[gsize.size() - 1]++;
+					}
+				}				
+			}
+			unsigned muli = 1;
+			cout << "GROUP : " << gsize.size() << endl;
+			for (int i = 0; i < gsize.size(); i++){
+				cout << gsize[i] << ' ';
+				muli *= gsize[i];
+			}
+			cout << endl << muli << endl;
 		}
 		getline(cin, command);
 	}
