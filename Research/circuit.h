@@ -12,7 +12,7 @@ void ReadCircuit(string filename);
 void ReadPath_l(string filename);
 //void ReadPath_s(string filename);
 void CalVertexWeight();
-bool ChooseVertexWithGreedyMDS(double year,double pre_rvalue);
+void ChooseVertexWithGreedyMDS(double year,bool puthash);
 int HashAllClockBuffer();
 void GenerateSAT(string filename,double year);
 bool CallSatAndReadReport(int flag);

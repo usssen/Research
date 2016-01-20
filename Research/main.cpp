@@ -106,53 +106,59 @@ int main(int argc, char* argv[]){
 	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
 	cout << "finisned." << endl;
+	/*
 	cout << "Initial Estimate Time" << endl;
-	EstimateTimeEV(year);	
+	EstimateTimeEV(year);
+	*/
+	if (argc > 7){
+		cout << "Please Input Command : ";
+		PrintStatus(year);
+	}
 	bool* bestnode = new bool[PathC.size()];
 	double bestup = 100, bestlow = -100;
 	string s;
 	fstream fileres;
 	for (int tryi = 0; tryi < atoi(argv[5]); tryi++){
-		if (tryi>0)
-			ChooseVertexWithGreedyMDS(year, -1.0);
-		int co = 0;
-		while (true){
-			cout << tryi + 1 << " - " << co++ << endl;
-			if (!ChooseVertexWithGreedyMDS(year, 1.0))
+
+		ChooseVertexWithGreedyMDS(year, false);
+		GenerateSAT("sat.cnf", year);
+		CallSatAndReadReport(0);
+
+		fileres.open("temp.sat");
+		getline(fileres, s);
+		fileres.close();
+
+		if (s.find("UNSAT") != string::npos){
+			ChooseVertexWithGreedyMDS(year, true);
+			continue;
+		}
+		
+		double upper, lower;
+		CalQuality(year, upper, lower);
+		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
+			for (int i = 0; i < PathC.size(); i++)
+				bestnode[i] = PathC[i]->Is_Chosen();
+		}
+		cout << "Q = " << upper << " ~ " << lower << endl;
+		cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+		for (int i = 1; i <= atoi(argv[6]); i++){
+			if (!RefineResult(year))
 				break;
-			GenerateSAT("sat.cnf", year);
-			CallSatAndReadReport(0);
-			fileres.open("temp.sat");
-			getline(fileres, s);
-			fileres.close();
-			if (s.find("UNSAT") != string::npos)
+			cout << "Refine #" << i << " : " << endl;
+			if (!CallSatAndReadReport(0)){	//0: 一般找解 1:最佳解
+				//cout << "Can't Refine Anymore" << endl;
 				break;
-			double upper, lower;
+			}
 			CalQuality(year, upper, lower);
-			if (BInv(bestup,bestlow,bestup,bestlow,upper,lower,year)){
+			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			for (int i = 1; i <= atoi(argv[6]); i++){
-				if (!RefineResult(year))	
-					break;
-				cout << "Refine #" << i << " : " << endl;
-				if (!CallSatAndReadReport(0)){
-					//cout << "Can't Refine Anymore" << endl;
-					break;
-				}				
-				CalQuality(year,upper,lower);							
-				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
-					for (int i = 0; i < PathC.size(); i++)
-						bestnode[i] = PathC[i]->Is_Chosen();					
-				}
-				cout << "Q = " << upper << " ~ " << lower << endl;
-				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			}
 		}
 	}
+
 	if (bestup>10){
 		cout << "No Solution!" << endl;
 		return 0;
@@ -163,7 +169,7 @@ int main(int argc, char* argv[]){
 		PathC[i]->SetChoose(bestnode[i]);
 	GenerateSAT("sat.cnf", year);
 	CallSatAndReadReport(0);
-	int t = 10;
+	int t = 10;	//最終refine 10次
 	do{
 		double upper, lower;
 		CalQuality(year, upper, lower);		

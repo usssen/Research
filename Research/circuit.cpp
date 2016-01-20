@@ -590,11 +590,11 @@ inline double absl(double x){
 	return x;
 }
 
-double thershold = 0.9;	//R平方
+double thershold = 0.8;	//R平方
 //double t_slope = 0.95;
 
 bool Check_Connect(int a, int b,double year){	
-	if (EdgeA[a][b] > 9999)
+	if (EdgeA[a][b] > 9999 ||EdgeA[a][b]*EdgeA[a][b] < 0.000001)
 		return false;
 	if (cor[a][b]<0)	//負相關
 		return false;
@@ -827,83 +827,102 @@ public:
 };
 
 
-bool ChooseVertexWithGreedyMDS(double year, double pre_rvalueb){	
-	int No_node = PathC.size();
-	static bool refresh = true;
-	static int *degree = new int[No_node], *color = new int[No_node];
-	static bool *nochoose = new bool[No_node];
-	static HASHTABLE hashp(16, PathC.size());
-	if (pre_rvalueb < 0){									//<0代表上次的無解,僅做加入hash
-		refresh = true;
-		hashp.PutNowStatus();
-		return false;
-	}
-	if (refresh){		
-		for (int i = 0; i < No_node; i++){			
-			PathC[i]->SetChoose(false);			
-			degree[i] = 0;			
-			color[i] = 1;			
-			nochoose[i] = false;			
-			for (int j = 0; j < No_node; j++){				//注意可能有在CPInfo中濾掉此處未濾掉的
-				if (Check_Connect(i, j,year))				
-					degree[i]++;
-			}			
-		}
-		refresh = false;
-	}
+void ChooseVertexWithGreedyMDS(double year,bool puthash){	
 	
-	int mini;
-	//double min;
-	int w_point = 0;
-	for (int i = 0; i < No_node; i++)
-		if (color[i] == 1)
-			w_point++;
-	vector<PN_W> cand;
-	for (int i = 0; i < No_node; i++){
-		if (color[i] == -1)	//黑的不選
-			continue;
-		if (nochoose[i])
-			continue;
-		PathC[i]->SetChoose(true);
-		if (hashp.Exist()){
-			PathC[i]->SetChoose(false);
-			nochoose[i] = true;
-			continue;
-		}
-		PathC[i]->SetChoose(false);
-		double w = 0;						//期望此值能夠算出和給定值之差
-		w += 3*EstimateAddTimes(year, i);	//加入i點後增加的解差值		
-		//w -= EstimateSolMines(i);	//加入i點後剩下的解比例之幾何平均
-		w += EstimatePSD(i);		//加入i點後增加的"類標準差"
-		w -= (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
-		cand.push_back(PN_W(i, w));
-	}
-	if (cand.size() == 0){
-		refresh = true;
+	static HASHTABLE hashp(16, PathC.size());
+		if (puthash){		
 		hashp.PutNowStatus();
-		return false;	//false代表這次的點不要做sat
+		return;
 	}
-	sort(cand.begin(), cand.end(), PN_W_comp);
-	int ii = 0;
-	while (ii < cand.size() - 1 && (rand() % 10) >= 7){	//10%的機會跳到較差的解
-		ii++;
-	}
-	mini = cand[ii].pn;	
+
+	int No_node = PathC.size();
+	int *degree = new int[No_node], *color = new int[No_node];
+	int cc = 0;
 	for (int i = 0; i < No_node; i++){
-		if (Check_Connect(mini, i,year) && color[i] == 1){
-			for (int j = 0; j < No_node; j++){
-				if (Check_Connect(i, j,year) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
-					degree[j]--;
-			}
-			color[i] = 0;	//被選點的隔壁改為灰
-			if (color[mini] == 1)	//被選點改為黑,旁邊的degree -1
-				degree[i]--;
+		PathC[i]->SetChoose(false);
+		degree[i] = 0;
+		color[i] = 1;
+		for (int j = 0; j < No_node; j++){				//注意可能有在CPInfo中濾掉此處未濾掉的
+			if ((Check_Connect(i, j, year)||Check_Connect(j,i,year)) && i != j)
+				degree[i]++;
 		}
-	}
-	PathC[mini]->SetChoose(true);
-	degree[mini] = 0;
-	color[mini] = -1;	//被選點改為黑
-	return true;
+		if (degree[i] == 0){							//degree為0的必選
+			color[i] = -1;
+			PathC[i]->SetChoose(true);
+			cc++;
+		}
+	}	
+	int mini, w_point;
+	vector<PN_W> cand;
+	while (true){
+		for (mini = 0, w_point = 0; mini < PathC.size(); mini++){
+			if (color[mini] == 1)
+				w_point++;
+		}
+		if (w_point == 0)
+			break;
+		
+		cand.clear();
+
+		for (int i = 0; i < No_node; i++){
+			if (color[i] == -1)				//黑的不選
+				continue;
+
+			PathC[i]->SetChoose(true);		//查hash表,若存在就跳過
+			if (hashp.Exist()){
+				PathC[i]->SetChoose(false);
+				continue;
+			}
+
+			PathC[i]->SetChoose(false);			
+
+			double w = 0;						//期望此值能夠算出和給定值之差
+			//w -= EstimateAddTimes(year, i);	//加入i點後增加的解差值		
+			//w -= EstimatePSD(i);		//加入i點後增加的"類標準差"
+			
+			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比			
+			cand.push_back(PN_W(i, w));
+		}
+		if (cand.size() == 0){
+			//hashp.PutNowStatus();
+			break;
+		}
+		sort(cand.begin(), cand.end(), PN_W_comp);	
+		
+		int ed = 0;											//找degree最大者,如果相同就隨機
+		while (ed < cand.size()){
+			if (absl(cand[ed].w - cand[0].w) < 0.00001)
+				ed++;
+			else
+				break;
+		}		
+		mini = cand[rand() % ed].pn;	
+		
+		for (int i = 0; i < No_node; i++){
+			
+			if (mini == i)	continue;
+
+			if ((Check_Connect(mini, i, year)||Check_Connect(i,mini,year)) && color[i] == 1){
+				for (int j = 0; j < No_node; j++){
+					if (i == j)	continue;
+					if ((Check_Connect(i, j, year)||Check_Connect(j,i,year)) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
+						degree[j]--;
+				}
+				color[i] = 0;	//被選點的隔壁改為灰
+				if (color[mini] == 1)	//被選點白->黑,旁邊的degree -1
+					degree[i]--;
+			}
+			else if ((Check_Connect(mini, i, year)||Check_Connect(i,mini,year)) && color[i] == 0 && color[mini] == 1){
+				degree[i] --;
+			}
+		}
+		PathC[mini]->SetChoose(true);
+		degree[mini] = 0;
+		color[mini] = -1;	//被選點改為黑
+		cc++;
+	}	
+	cout <<  cc << endl;
+	return;
 }
 
 map<GATE*, int> cbuffer_code;
@@ -1553,21 +1572,19 @@ void PrintStatus(double year){
 				if (used[i])
 					continue;
 				gsize.push_back(1);
-				used[i] = false;
+				used[i] = true;
 				for (int j = i + 1; j < PathC.size(); j++){
-					if (Check_Connect(i, j, year)){
+					if (Check_Connect(i, j, year) || Check_Connect(j, i, year)){
 						used[j] = true;
 						gsize[gsize.size() - 1]++;
 					}
 				}				
 			}
-			unsigned muli = 1;
 			cout << "GROUP : " << gsize.size() << endl;
 			for (int i = 0; i < gsize.size(); i++){
 				cout << gsize[i] << ' ';
-				muli *= gsize[i];
 			}
-			cout << endl << muli << endl;
+			cout << endl;
 		}
 		getline(cin, command);
 	}
