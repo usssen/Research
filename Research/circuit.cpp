@@ -1559,7 +1559,7 @@ void PrintStatus(double year){
 			int count = 0;
 			for (int i = 0; i < PathC.size();i++)
 				for (int j = i + 1; j < PathC.size();j++)
-					if (Check_Connect(i, j, year))
+					if (Check_Connect(i, j, year) || Check_Connect(j, i, year))
 						count++;
 			cout << "Edge : " << count << endl;
 		}
