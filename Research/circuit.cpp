@@ -921,11 +921,7 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		color[mini] = -1;	//被選點改為黑
 		cc++;
 	}	
-	cout <<  cc << endl;
-	for (int i = 0; i < PathC.size(); i++){
-		cout << degree[i] << ' ';
-	}
-	cout << endl;
+	cout <<  cc << endl;	
 	return;
 }
 
@@ -1562,12 +1558,13 @@ void PrintStatus(double year){
 		else if (command.find("count edge") != string::npos){
 			int count = 0;
 			for (int i = 0; i < PathC.size();i++)
-				for (int j = i + 1; j < PathC.size();j++)
-					if (Check_Connect(i, j, year) || Check_Connect(j, i, year))
+				for (int j = 0; j < PathC.size();j++)
+					if (Check_Connect(i, j, year) && i != j)
 						count++;
 			cout << "Edge : " << count << endl;
 		}
 		else if (command.find("count group") != string::npos){
+			cout << "May not have \"group\" in fact." << endl;
 			bool *used = new bool[PathC.size()];
 			vector<int>gsize;
 			for (int i = 0; i < PathC.size(); i++)
@@ -1577,8 +1574,8 @@ void PrintStatus(double year){
 					continue;
 				gsize.push_back(1);
 				used[i] = true;
-				for (int j = i + 1; j < PathC.size(); j++){
-					if (Check_Connect(i, j, year) || Check_Connect(j, i, year)){
+				for (int j = 0; j < PathC.size(); j++){
+					if (Check_Connect(i, j, year) && i!=j && !used[j]){
 						used[j] = true;
 						gsize[gsize.size() - 1]++;
 					}
@@ -1589,6 +1586,16 @@ void PrintStatus(double year){
 				cout << gsize[i] << ' ';
 			}
 			cout << endl;
+		}
+		else if (command.find("one side edge") != string::npos){
+			for (int i = 0; i < PathC.size(); i++){
+				for (int j = i + 1; j < PathC.size(); j++){
+					if (Check_Connect(i, j, year) ^ Check_Connect(j, i, year)){
+						cout << AgingRate(WORST, year) - CalPreAging(AgingRate(WORST, year), i, j, year);
+						cout << ' ' << AgingRate(WORST, year) - CalPreAging(AgingRate(WORST, year), j, i, year) << endl;
+					}
+				}
+			}
 		}
 		getline(cin, command);
 	}
