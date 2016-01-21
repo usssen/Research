@@ -843,7 +843,7 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		degree[i] = 0;
 		color[i] = 1;
 		for (int j = 0; j < No_node; j++){				//注意可能有在CPInfo中濾掉此處未濾掉的
-			if ((Check_Connect(i, j, year)||Check_Connect(j,i,year)) && i != j)
+			if (Check_Connect(i, j, year) && i != j)
 				degree[i]++;
 		}
 		if (degree[i] == 0){							//degree為0的必選
@@ -902,17 +902,17 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 			
 			if (mini == i)	continue;
 
-			if ((Check_Connect(mini, i, year)||Check_Connect(i,mini,year)) && color[i] == 1){
+			if (Check_Connect(mini, i, year) && color[i] == 1){
 				for (int j = 0; j < No_node; j++){
 					if (i == j)	continue;
-					if ((Check_Connect(i, j, year)||Check_Connect(j,i,year)) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
+					if (Check_Connect(j,i,year) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
 						degree[j]--;
 				}
 				color[i] = 0;	//被選點的隔壁改為灰
-				if (color[mini] == 1)	//被選點白->黑,旁邊的degree -1
+				if (color[mini] == 1 && Check_Connect(i,mini,year))	//被選點白->黑,旁邊的degree -1
 					degree[i]--;
 			}
-			else if ((Check_Connect(mini, i, year)||Check_Connect(i,mini,year)) && color[i] == 0 && color[mini] == 1){
+			else if (Check_Connect(i,mini,year) && color[i] == 0 && color[mini] == 1){
 				degree[i] --;
 			}
 		}
@@ -922,6 +922,10 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		cc++;
 	}	
 	cout <<  cc << endl;
+	for (int i = 0; i < PathC.size(); i++){
+		cout << degree[i] << ' ';
+	}
+	cout << endl;
 	return;
 }
 
