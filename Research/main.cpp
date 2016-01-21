@@ -59,10 +59,10 @@ bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,dou
 
 
 int main(int argc, char* argv[]){
-	if (argc < 5){
-		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times]" << endl;
-		return 0;
-	}
+	//if (argc < 5){
+	//	cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times]" << endl;
+	//	return 0;
+	//}
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]){
 	//int year = 5;
 	ReadAgingData();
 	CheckPathAttackbility(year, 1.001, true);
-	
+
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;

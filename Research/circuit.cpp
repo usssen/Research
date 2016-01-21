@@ -210,7 +210,7 @@ void ReadPath_l(string filename){
 			getline(file, line);
 			double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
 			gptr = Circuit[0].GetGate(name);
-			p->AddGate(gptr, intime, outtime);
+			p->AddGate(gptr, intime, outtime);			
 		} while (getline(file, line));
 
 		p->AddGate(epptr, TransStringToDouble(line.substr(line.find("&") + 1)), -1);	//arrival time
@@ -448,8 +448,8 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < stptr->Clock_Length(); i++)
-		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < stn; i++)
 			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = stn; i < stptr->Clock_Length(); i++)
@@ -471,8 +471,8 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < edptr->Clock_Length(); i++)
-		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
-			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
+			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < edn; i++)
 			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = edn; i < edptr->Clock_Length(); i++)
@@ -518,8 +518,8 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < stptr->Clock_Length(); i++)
-		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		AGINGTYPE DCC_insert = DCC_NONE;
 		int i;
 		for (i = 0; i < ls && stptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++)
@@ -545,8 +545,8 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();	//不含clock-source
 		for (int i = 2; i < edptr->Clock_Length(); i++)
-		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
-			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
+			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		int i;
 		AGINGTYPE DCC_insert = DCC_NONE;
 		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++)
@@ -846,7 +846,7 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 			if (Check_Connect(i, j, year) && i != j)
 				degree[i]++;
 		}
-		if (degree[i] == 0){							//degree為0的必選
+		if (degree[i] == 0){							//degree為0的必選 => 若完全沒有edge怎麼選都是這個
 			color[i] = -1;
 			PathC[i]->SetChoose(true);
 			cc++;
