@@ -861,7 +861,9 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		cand.clear();
 
 		for (int i = 0; i < No_node; i++){
-			if (color[i] < 1)				//黑的不選
+			if (color[i] == -1)				//黑的不選
+				continue;
+			if (color[i] == 0 && degree[i] == 0)
 				continue;
 
 			PathC[i]->SetChoose(true);		//查hash表,若存在就跳過
