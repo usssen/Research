@@ -896,7 +896,7 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		mini = cand[rand() % ed].pn;	
 		for (int i = 0; i < No_node; i++){
 			
-			if (mini == i)	continue;
+			if (mini == i || color[i] == -1)	continue;
 
 			if (Check_Connect(mini, i, year) && color[i] == 1){
 				for (int j = 0; j < No_node; j++){
