@@ -846,12 +846,8 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 			if (Check_Connect(i, j, year) && i != j)
 				degree[i]++;
 		}
-		if (degree[i] == 0){							//degree為0的必選 => 若完全沒有edge怎麼選都是這個
-			color[i] = -1;
-			PathC[i]->SetChoose(true);
-			cc++;
-		}
-	}	
+	}
+	
 	int mini, w_point;
 	vector<PN_W> cand;
 	while (true){
@@ -865,7 +861,7 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		cand.clear();
 
 		for (int i = 0; i < No_node; i++){
-			if (color[i] == -1)				//黑的不選
+			if (color[i] < 1)				//黑的不選
 				continue;
 
 			PathC[i]->SetChoose(true);		//查hash表,若存在就跳過
@@ -880,7 +876,8 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 			//w -= EstimateAddTimes(year, i);	//加入i點後增加的解差值		
 			//w -= EstimatePSD(i);		//加入i點後增加的"類標準差"
 			
-			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比			
+			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比				
+			//w = No_node - i;
 			cand.push_back(PN_W(i, w));
 		}
 		if (cand.size() == 0){
@@ -897,7 +894,6 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 				break;
 		}		
 		mini = cand[rand() % ed].pn;	
-		
 		for (int i = 0; i < No_node; i++){
 			
 			if (mini == i)	continue;
@@ -908,20 +904,18 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 					if (Check_Connect(j,i,year) && color[j] != -1)	//白->灰,附近的點之degree -1 (黑點已設為degree = 0 跳過)
 						degree[j]--;
 				}
-				color[i] = 0;	//被選點的隔壁改為灰
-				if (color[mini] == 1 && Check_Connect(i,mini,year))	//被選點白->黑,旁邊的degree -1
-					degree[i]--;
+				color[i] = 0;	//被選點的隔壁改為灰				
 			}
-			else if (Check_Connect(i,mini,year) && color[i] == 0 && color[mini] == 1){
+			if (Check_Connect(i,mini,year) && color[mini] == 1){
 				degree[i] --;
 			}
 		}
 		PathC[mini]->SetChoose(true);
 		degree[mini] = 0;
 		color[mini] = -1;	//被選點改為黑
-		cc++;
-	}	
-	cout <<  cc << endl;	
+		cc++;		
+	}
+	cout << cc << endl;
 	return;
 }
 

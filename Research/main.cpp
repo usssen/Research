@@ -66,12 +66,12 @@ int main(int argc, char* argv[]){
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
-	//filename = "s38584.vg";
+	//filename = "s38417.vg";
 	cout << "Reading Circuit...";
 	ReadCircuit(filename);
 	cout << "Finished." << endl;
 	filename = argv[2];
-	//filename = "s38584.rpt";
+	//filename = "s38417.rpt";
 	Circuit[0].PutClockSource();
 	cout << "Reading Cirtical Paths Information...";
 	ReadPath_l(filename);
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
 		ser[i] = new double[ss];
 	}
 	filename = argv[3];
-	//filename = "s38584.cp";
+	//filename = "s38417.cp";
 	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
 	cout << "finisned." << endl;
