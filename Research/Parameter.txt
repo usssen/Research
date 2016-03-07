@@ -1,1 +1,4 @@
 0.0039 0.5 0.2
+thershold 0.5
+edge error 0.02
+PLUS fixed 7

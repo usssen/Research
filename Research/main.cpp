@@ -5,6 +5,13 @@
 #include<stdlib.h>
 #include "circuit.h"
 #include "aging.h"
+#include<signal.h>
+
+void inthandler(int s){
+	CallSatAndReadReport(1);
+	exit(1);
+}
+
 
 using namespace std;
 vector<CIRCUIT> Circuit;
@@ -15,6 +22,7 @@ double **cor;
 double **ser;
 double info[5];
 vector<PATH*> PathC;
+double ERROR = 1.0;
 
 inline double absf(double x){
 	if (x < 0)
@@ -34,14 +42,8 @@ inline double minf(double a, double b){
 	return b;
 }
 
-void swap(double &a, double &b){
-	double c = a;
-	a = b;
-	b = a;
-}
-
 bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,double n){
-	if (maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n)) < 0.001){
+	if (absf(maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n))) < 0.001){
 		if (minf(absf(u1 - n), absf(l1 - n)) < minf(absf(u2 - n), absf(l2 - n))){
 			bu = u1, bl = l1;
 			return false;
@@ -59,10 +61,11 @@ bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,dou
 
 
 int main(int argc, char* argv[]){
-	//if (argc < 5){
-	//	cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times]" << endl;
-	//	return 0;
-	//}
+	if (argc < 7){
+		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times] [ERROR limit]" << endl;
+		return 0;
+	}
+	signal(SIGINT, inthandler);
 	srand(time(NULL));
 	string filename;
 	filename = argv[1];
@@ -79,15 +82,40 @@ int main(int argc, char* argv[]){
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
 	int year = atoi(argv[4]);
+	ERROR = year*0.1;
+	if (argc > 7){
+		ERROR = atof(argv[7]);
+	}	
 	//int year = 5;
 	ReadAgingData();
-	CheckPathAttackbility(year, 1.001, true);
+	AdjustConnect();
+	double PLUS = ERROR;
+	fstream file;
+	string line;
+	file.open("Parameter.txt"); 
+	while (getline(file, line)){
+		if (line.find("PLUS") != string::npos){
+			if (line.find("auto") != string::npos){
+				PLUS = ERROR;
+			}
+			else if (line.find("fixed")!=string::npos){
+				double f = atof(line.c_str() + 10);
+				PLUS = f - year;
+			}
+			else{
+				PLUS = atof(line.c_str() + 4);
+			}
+			break;
+		}
+	}
+	cout << ERROR << ' ' << PLUS << endl;
+	CheckPathAttackbility(year, 1.001, true, PLUS);
 
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
-	CheckNoVio(year + 1);
+	CheckNoVio(year + ERROR);
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
@@ -110,7 +138,7 @@ int main(int argc, char* argv[]){
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);
 	*/
-	if (argc > 7){
+	if (argc > 8){
 		cout << "Please Input Command : ";
 		PrintStatus(year);
 	}
@@ -118,56 +146,98 @@ int main(int argc, char* argv[]){
 	double bestup = 100, bestlow = -100;
 	string s;
 	fstream fileres;
-	for (int tryi = 0; tryi < atoi(argv[5]); tryi++){
-
-		ChooseVertexWithGreedyMDS(year, false);
-		GenerateSAT("sat.cnf", year);
-		CallSatAndReadReport(0);
-
-		fileres.open("temp.sat");
-		getline(fileres, s);
-		fileres.close();
-
-		if (s.find("UNSAT") != string::npos){
-			ChooseVertexWithGreedyMDS(year, true);
-			continue;
-		}
-		
-		double upper, lower;
-		CalQuality(year, upper, lower);
-		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
-			for (int i = 0; i < PathC.size(); i++)
-				bestnode[i] = PathC[i]->Is_Chosen();
-		}
-		cout << "Q = " << upper << " ~ " << lower << endl;
-		cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-		for (int i = 1; i <= atoi(argv[6]); i++){
-			if (!RefineResult(year))
-				break;
-			cout << "Refine #" << i << " : " << endl;
-			if (!CallSatAndReadReport(0)){	//0: 一般找解 1:最佳解
-				//cout << "Can't Refine Anymore" << endl;
-				break;
+	int fr = 999999;
+	int trylimit = atoi(argv[5]),tryi = 0;	
+	do{
+		for (; tryi < trylimit; tryi++){
+			cout << "Round : " << tryi << endl;
+			if (!ChooseVertexWithGreedyMDS(year, false)){
+				ChooseVertexWithGreedyMDS(year, true);
+				cout << "Not Domination Set!" << endl;
+				continue;
 			}
+			GenerateSAT("sat.cnf", year);
+			CallSatAndReadReport(0);
+
+			fileres.open("temp.sat");
+			getline(fileres, s);
+			fileres.close();
+			if (s.find("UNSAT") != string::npos){
+				if (bestup<10 && bestlow>1)
+					cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+				ChooseVertexWithGreedyMDS(year, true);
+				continue;
+			}
+			if (fr > tryi)
+				fr = tryi;
+			
+			cout << endl << "Try to Remove Redundant DCCs." << endl;
+			int mindccs = CallSatAndReadReport(0);
+			system("cp sat.cnf bestdccs.cnf");
+
+			for (int i = 0; i < PathC.size(); i++){
+				if (PathC[i]->Is_Chosen())
+					continue;
+				system("cp sat.cnf backup.cnf");
+				RemoveRDCCs(i);
+				int dccs = CallSatAndReadReport(0);
+				if (!dccs){
+					system("cp backup.cnf sat.cnf");
+					continue;
+				}
+				if (dccs < mindccs){
+					mindccs = dccs;
+					system("cp sat.cnf bestdccs.cnf");
+				}			
+			}
+			//如何取捨Quality和DCC ?
+			system("cp bestdccs.cnf sat.cnf");
+			
+			CallSatAndReadReport(0);		
+			double upper, lower;
 			CalQuality(year, upper, lower);
 			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
+				system("cp sat.cnf best.cnf");
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-		}
-	}
+	
 
-	if (bestup>10){
-		cout << "No Solution!" << endl;
-		return 0;
-	}
+			for (int i = 1; i <= atoi(argv[6]); i++){
+				if (!RefineResult(year))
+					break;
+				cout << "Refine #" << i << " : " << endl;
+				if (!CallSatAndReadReport(0)){	//0: 一般找解 1:最佳解
+					//cout << "Can't Refine Anymore" << endl;
+					break;
+				}
+				CalQuality(year, upper, lower);
+				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
+					for (int i = 0; i < PathC.size(); i++)
+						bestnode[i] = PathC[i]->Is_Chosen();
+					system("cp sat.cnf best.cnf");
+				}
+				cout << "Q = " << upper << " ~ " << lower << endl;
+				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+			}
+		}
+		if (bestup>10){
+			cout << "NO SOLUTION!, Input New Try Limit or 0 for Give Up. " << endl;
+			int addt;
+			cin >> addt;
+			if (addt <= 0)
+				return 0;
+			trylimit += addt;
+		}
+	} while (bestup > 10);
+
 	bestup = 100, bestlow = -100;
 	cout << "Final Refinement" << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);
-	GenerateSAT("sat.cnf", year);
+	system("cp best.cnf sat.cnf");
 	CallSatAndReadReport(0);
 	int t = 10;	//最終refine 10次
 	do{
@@ -193,5 +263,6 @@ int main(int argc, char* argv[]){
 	double y;
 	cin >> y;
 	PrintStatus(y);
+	cout << fr << endl;
 	return 0;
 }

@@ -5,7 +5,6 @@
 #include "circuit.h"
 #include<stdlib.h>
 #include<algorithm>
-#define ERROR 1
 
 using namespace std;
 
@@ -18,6 +17,7 @@ extern double **cor;
 extern double **ser;
 extern double info[5];
 double period;
+extern double ERROR;
 
 
 double TransStringToDouble(string s){
@@ -174,7 +174,7 @@ void ReadPath_l(string filename){
 		}
 		getline(file, line);
 		getline(file, line);		//這2行的會反應在第一個gate時間上 不用記
-		//if (spptr->Clock_Length() == 0 && spptr->GetType()!="PI"){
+		//if (spptr->ClockLength() == 0 && spptr->GetType()!="PI"){
 		if (spptr->GetType() != "PI"){
 			while (getline(file, line)){	//clock-source -> startpoint			
 				line = RemoveSpace(line);
@@ -229,7 +229,7 @@ void ReadPath_l(string filename){
 		}
 		else{
 			while (line.find("clock source latency") == string::npos) getline(file, line);
-			//if (epptr->Clock_Length() == 0){
+			//if (epptr->ClockLength() == 0){
 				while (getline(file, line)){
 					line = RemoveSpace(line);
 					if (ep == line.substr(0, line.find("/"))){
@@ -447,12 +447,12 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 	if (stptr->GetType() != "PI"){
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
-		for (int i = 2; i < stptr->Clock_Length(); i++)
+		for (int i = 2; i < stptr->ClockLength(); i++)
 			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
 				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < stn; i++)
 			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
-		for (int i = stn; i < stptr->Clock_Length(); i++)
+		for (int i = stn; i < stptr->ClockLength(); i++)
 			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(ast, year);
 		switch (ast){
 		case DCC_S:
@@ -470,12 +470,12 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 	if (edptr->GetType() != "PO"){
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
-		for (int i = 2; i < edptr->Clock_Length(); i++)
+		for (int i = 2; i < edptr->ClockLength(); i++)
 			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
 				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < edn; i++)
 			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
-		for (int i = edn; i < edptr->Clock_Length(); i++)
+		for (int i = edn; i < edptr->ClockLength(); i++)
 			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(aed, year);
 		switch (aed){
 		case DCC_S:
@@ -511,13 +511,13 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 bool Vio_Check(PATH* pptr, double year, double Aging_P){
 	GATE* stptr = pptr->Gate(0);
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
-	int ls = stptr->Clock_Length();
-	int le = edptr->Clock_Length();
+	int ls = stptr->ClockLength();
+	int le = edptr->ClockLength();
 	double clks = 0.0;
 	if (stptr->GetType() != "PI"){
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
-		for (int i = 2; i < stptr->Clock_Length(); i++)
+		for (int i = 2; i < stptr->ClockLength(); i++)
 			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
 				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		AGINGTYPE DCC_insert = DCC_NONE;
@@ -544,7 +544,7 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 	if (edptr->GetType() != "PO"){
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();	//不含clock-source
-		for (int i = 2; i < edptr->Clock_Length(); i++)
+		for (int i = 2; i < edptr->ClockLength(); i++)
 			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
 				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		int i;
@@ -591,21 +591,32 @@ inline double absl(double x){
 }
 
 double thershold = 0.8;	//R平方
-//double t_slope = 0.95;
+double errlimit = 0.005;
+
+void AdjustConnect(){	
+	fstream ff;
+	ff.open("Parameter.txt", ios::in);
+	string line;
+	while (getline(ff, line)){
+		if (line.find("thershold") != string::npos){
+			thershold = atof(line.c_str() + 9);
+		}
+		if (line.find("edge error") != string::npos){
+			errlimit = atof(line.c_str() + 10);
+		}		
+	}
+	ff.close();	
+}
 
 bool Check_Connect(int a, int b,double year){	
 	if (EdgeA[a][b] > 9999 ||EdgeA[a][b]*EdgeA[a][b] < 0.000001)
 		return false;
 	if (cor[a][b]<0)	//負相關
 		return false;
-	//if (EdgeA[a][b] > 1)
-	//	return Check_Connect(b, a,year);	
 	if ((cor[a][b]*cor[a][b])<thershold)		//相關係數要超過thershold才視為有邊
 		return false;
-	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>0.005)
-		return false;
-	//if (EdgeA[a][b] < t_slope)	//斜率在範圍外 => 要加入預測區間 or 或是只需夠高的相關係數 =>不一定 只要老化率相近即可
-	//	return false;
+	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>errlimit)
+		return false;	
 	return true;
 }
 
@@ -626,7 +637,7 @@ void EstimateTimeEV(double year){
 			double pv2 = 0;		//	類標準差 -> sigma(xi - avg)^2 /N  用給定時間代替avg
 			int solc = 0;
 			if (stptr->GetType() == "PI"){
-				for (int j = 0; j < edptr->Clock_Length(); j++){
+				for (int j = 0; j < edptr->ClockLength(); j++){
 					for (int x = 1; x < 4; x++){
 						edptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
@@ -650,7 +661,7 @@ void EstimateTimeEV(double year){
 				}
 			}
 			else if (edptr->GetType() == "PO"){
-				for (int j = 0; j < stptr->Clock_Length(); j++){
+				for (int j = 0; j < stptr->ClockLength(); j++){
 					for (int x = 1; x < 4; x++){
 						stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
 						if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
@@ -698,8 +709,8 @@ void EstimateTimeEV(double year){
 					}
 					branch++;
 				}
-				for (int j = branch; j < stptr->Clock_Length(); j++){
-					for (int j2 = branch; j2 < edptr->Clock_Length(); j2++){
+				for (int j = branch; j < stptr->ClockLength(); j++){
+					for (int j2 = branch; j2 < edptr->ClockLength(); j2++){
 						for (int x = 0; x < 4; x++){
 							for (int y = 0; y<4; y++){
 								if (x == 0 && y == 0)	continue;
@@ -826,13 +837,77 @@ public:
 	}
 };
 
+double Overlap(int p){		//計算FF頭尾重疊率 => 取最大值=> 如何比較僅有頭/尾的? => 比較難成功 直接加一個值
+	double max = 0;
+	PATH* pptr = PathC[p];
+	GATE* stptr = pptr->Gate(0);
+	GATE* edptr = pptr->Gate(pptr->length() - 1);
+	for (int i = 0; i < PathC.size(); i++){
+		if (!PathC[i]->Is_Chosen())
+			continue;		
+		PATH* iptr = PathC[i];
+		double score, s1, s2;
+		if (stptr->GetType() != "PI"){
+			GATE* gptr = iptr->Gate(iptr->length() - 1);			
+			int c = 0;
+			while (c < stptr->ClockLength() && c < gptr->ClockLength()){
+				if (stptr->GetClockPath(c) != gptr->GetClockPath(c))
+					break;
+				c++;
+			}
+			s1 = (double)c / (double)stptr->ClockLength();
+		}
+		else{
+			s1 = 1;		//若一邊為FF 視為完全重疊 (必比二邊FF差)
+		}
 
-void ChooseVertexWithGreedyMDS(double year,bool puthash){	
+		if (edptr->GetType() != "PO"){
+			GATE* gptr = iptr->Gate(0);			
+			int c = 0;
+			while (c < edptr->ClockLength() && c < gptr->ClockLength()){
+				if (edptr->GetClockPath(c) != gptr->GetClockPath(c))
+					break;
+				c++;
+			}
+			s2 = (double)c / (double)edptr->ClockLength();
+		}
+		else{
+			s2 = 1;		//此狀況下尾端重疊度設1,必較差
+		}
+		
+		if (s1>s2)
+			score = s1 * 2 + s2;
+		else
+			score = s2 * 2 + s1;
+		
+		//score = s1 + s2;
+		
+		if (max < score)
+			max = score;
+	}
+	return max;
+}
+
+double AtkPointRate(PATH* pptr){
+	GATE* stptr = pptr->Gate(0);
+	GATE* edptr = pptr->Gate(pptr->length() - 1);
+	if (stptr->GetType() == "PI" || edptr->GetType() == "PO")
+		return 0.75;
+	int c = 0;
+	while (c < stptr->ClockLength() && c < edptr->ClockLength()){
+		if (stptr->GetClockPath(c) != edptr->GetClockPath(c))
+			break;
+		c++;
+	}
+	return (double)c * 2 / (double)(stptr->ClockLength() + edptr->ClockLength());
+}
+
+bool ChooseVertexWithGreedyMDS(double year,bool puthash){	
 	
 	static HASHTABLE hashp(16, PathC.size());
 		if (puthash){		
 		hashp.PutNowStatus();
-		return;
+		return true;
 	}
 
 	int No_node = PathC.size();
@@ -847,6 +922,12 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 				degree[i]++;
 		}
 	}
+	/*
+	for (int i = 0; i < No_node;i++)
+		if (degree[i] == 0)
+			PathC[i]->SetChoose(true);
+	return true;
+	*/
 	
 	int mini, w_point;
 	vector<PN_W> cand;
@@ -855,15 +936,17 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 			if (color[mini] == 1)
 				w_point++;
 		}
-		if (w_point == 0)
-			break;
-		
+		if (w_point == 0){
+			//break;
+			cout << endl << cc << endl;
+			return true;
+		}
 		cand.clear();
-
+		
 		for (int i = 0; i < No_node; i++){
 			if (color[i] == -1)				//黑的不選
 				continue;
-			if (color[i] == 0 && degree[i] == 0)
+			if (color[i] == 0 && degree[i] == 0)	//沒有degree的灰點不要選
 				continue;
 
 			PathC[i]->SetChoose(true);		//查hash表,若存在就跳過
@@ -874,30 +957,49 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 
 			PathC[i]->SetChoose(false);			
 
-			double w = 0;						//期望此值能夠算出和給定值之差
+			double w = 0;
 			//w -= EstimateAddTimes(year, i);	//加入i點後增加的解差值		
 			//w -= EstimatePSD(i);		//加入i點後增加的"類標準差"
 			
-			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比				
-			//w = No_node - i;
+			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
+			w -= 3*Overlap(i);
+			w -= 2*AtkPointRate(PathC[i]);
 			cand.push_back(PN_W(i, w));
 		}
 		if (cand.size() == 0){
 			//hashp.PutNowStatus();
-			break;
+			//break;
+			return false;
 		}
+
 		sort(cand.begin(), cand.end(), PN_W_comp);	
 		
-		int ed = 0;											//找degree最大者,如果相同就隨機
-		while (ed < cand.size()){
-			if (absl(cand[ed].w - cand[0].w) < 0.00001)
-				ed++;
-			else
-				break;
-		}		
-		mini = cand[rand() % ed].pn;	
-		for (int i = 0; i < No_node; i++){
-			
+		if (cc == 0){	//第一個點射飛標
+			int s = 0;
+			for (int i = 0; i < cand.size(); i++){
+				s += degree[cand[i].pn];
+			}
+			int target = rand() % s;
+			s = 0;
+			for (int i = 0; i < cand.size(); i++){
+				s += degree[cand[i].pn];
+				if (s >= target){
+					mini = cand[i].pn;
+					break;
+				}
+			}
+		}
+		else{			
+			int ed = 0;											//找degree最大者,如果相同就隨機
+			while (ed < cand.size()){
+				if (absl(cand[ed].w - cand[0].w) < 0.5)
+					ed++;
+				else
+					break;
+			}
+			mini = cand[rand() % ed].pn;
+		}
+		for (int i = 0; i < No_node; i++){			
 			if (mini == i || color[i] == -1)	continue;
 
 			if (Check_Connect(mini, i, year) && color[i] == 1){
@@ -915,10 +1017,9 @@ void ChooseVertexWithGreedyMDS(double year,bool puthash){
 		PathC[mini]->SetChoose(true);
 		degree[mini] = 0;
 		color[mini] = -1;	//被選點改為黑
-		cc++;		
-	}
-	cout << cc << endl;
-	return;
+		cc++;
+		cout << PathC[mini]->No() << ' ';
+	}	
 }
 
 map<GATE*, int> cbuffer_code;
@@ -934,7 +1035,7 @@ int HashAllClockBuffer(){
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		if (stptr->GetType() != "PI"){
-			for (int j = 0; j < stptr->Clock_Length(); j++)
+			for (int j = 0; j < stptr->ClockLength(); j++)
 				if (cbuffer_code.find(stptr->GetClockPath(j)) == cbuffer_code.end()){
 					cbuffer_code[stptr->GetClockPath(j)] = k;
 					cbuffer_decode[k] = stptr->GetClockPath(j);
@@ -942,7 +1043,7 @@ int HashAllClockBuffer(){
 			}
 		}		
 		if (edptr->GetType() != "PO"){
-			for (int j = 0; j < edptr->Clock_Length(); j++)
+			for (int j = 0; j < edptr->ClockLength(); j++)
 			if (cbuffer_code.find(edptr->GetClockPath(j)) == cbuffer_code.end()){
 				cbuffer_code[edptr->GetClockPath(j)] = k;
 				cbuffer_decode[k] = edptr->GetClockPath(j);
@@ -954,10 +1055,10 @@ int HashAllClockBuffer(){
 }
 
 
-void CheckPathAttackbility(double year,double margin,bool flag){		
-		period = 0.0;
+void CheckPathAttackbility(double year,double margin,bool flag,double PLUS){		
+		period = 0.0;		
 		for (int i = 0; i < PathR.size(); i++){
-			double pp = (1 + AgingRate(WORST, static_cast<double>(year + ERROR)))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0)) + (1.0 + AgingRate(FF, static_cast<double>(year + ERROR)))*(PathR[i].Out_time(0) - PathR[i].In_time(0)) + (1.0 + AgingRate(DCC_NONE, static_cast<double>(year + ERROR)))*(PathR[i].GetCTH() - PathR[i].GetCTE()) + PathR[i].GetST();	//check一下
+			double pp = (1 + AgingRate(WORST, static_cast<double>(year + PLUS)))*(PathR[i].In_time(PathR[i].length() - 1) - PathR[i].Out_time(0)) + (1.0 + AgingRate(FF, static_cast<double>(year + PLUS)))*(PathR[i].Out_time(0) - PathR[i].In_time(0)) + (1.0 + AgingRate(DCC_NONE, static_cast<double>(year + PLUS)))*(PathR[i].GetCTH() - PathR[i].GetCTE()) + PathR[i].GetST();
 			pp *= margin;
 			if (pp>period)
 				period = pp;
@@ -972,8 +1073,8 @@ void CheckPathAttackbility(double year,double margin,bool flag){
 		pptr->SetSafe(true);
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);		
-		int lst = stptr->Clock_Length();
-		int led = edptr->Clock_Length();
+		int lst = stptr->ClockLength();
+		int led = edptr->ClockLength();
 		int branch = 1;		
 		if (stptr->GetType() == "PI"){
 			for (int j = 1; j < led; j++){
@@ -1072,8 +1173,8 @@ void GenerateSAT(string filename,double year){
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length()-1);
 		int stn = 0, edn = 0;	//放置點(之後，包括自身都會受影響)
-		int lst = stptr->Clock_Length();
-		int led = edptr->Clock_Length();
+		int lst = stptr->ClockLength();
+		int led = edptr->ClockLength();
 		if (exclusive.find(stptr) == exclusive.end()){
 			for (int j = 0; j < lst; j++){
 				for (int k = j + 1; k < lst; k++){
@@ -1149,11 +1250,11 @@ void GenerateSAT(string filename,double year){
 							if (x >= 2)	//10 11
 								file << '-';
 							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-							for (int j = 0; j < stptr->Clock_Length(); j++){
+							for (int j = 0; j < stptr->ClockLength(); j++){
 								if (j == stn)	continue;
 								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
-							for (int j = 0; j < edptr->Clock_Length(); j++){
+							for (int j = 0; j < edptr->ClockLength(); j++){
 								if (j == edn)	continue;
 								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
@@ -1181,11 +1282,11 @@ void GenerateSAT(string filename,double year){
 									if (y >= 2)
 										file << '-';
 									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-									for (int j = 0; j < stptr->Clock_Length(); j++){
+									for (int j = 0; j < stptr->ClockLength(); j++){
 										if (j == stn)	continue;
 										file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
 									}
-									for (int j = 0; j < edptr->Clock_Length(); j++){
+									for (int j = 0; j < edptr->ClockLength(); j++){
 										if (j == edn)	continue;
 										file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 									}
@@ -1249,11 +1350,11 @@ void GenerateSAT(string filename,double year){
 							if (x >= 2)	//10 11
 								file << '-';
 							file << cbuffer_code[stptr->GetClockPath(stn)] * 2 + 2 << ' ';
-							for (int j = 0; j < stptr->Clock_Length(); j++){
+							for (int j = 0; j < stptr->ClockLength(); j++){
 								if (j == stn)	continue;
 								file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
-							for (int j = 0; j < edptr->Clock_Length(); j++){
+							for (int j = 0; j < edptr->ClockLength(); j++){
 								if (j == edn)	continue;
 								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
@@ -1281,11 +1382,11 @@ void GenerateSAT(string filename,double year){
 									if (y >= 2)
 										file << '-';
 									file << cbuffer_code[edptr->GetClockPath(edn)] * 2 + 2 << ' ';
-									for (int j = 0; j < stptr->Clock_Length(); j++){
+									for (int j = 0; j < stptr->ClockLength(); j++){
 										if (j == stn)	continue;
 										file << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << ' ';
 									}
-									for (int j = 0; j < edptr->Clock_Length(); j++){
+									for (int j = 0; j < edptr->ClockLength(); j++){
 										if (j == edn)	continue;
 										file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 									}
@@ -1301,31 +1402,32 @@ void GenerateSAT(string filename,double year){
 	file.close();
 }
 
-bool CallSatAndReadReport(int flag){
+int CallSatAndReadReport(int flag){
 	//cout << "Start Call SAT" << endl;
 	for (int i = 0; i < PathC.size(); i++){
 		GATE* stptr = PathC[i]->Gate(0);
 		GATE* edptr = PathC[i]->Gate(PathC[i]->length() - 1);
-		for (int i = 0; i < stptr->Clock_Length(); i++)
+		for (int i = 0; i < stptr->ClockLength(); i++)
 			stptr->GetClockPath(i)->SetDcc(DCC_NONE);
-		for (int i = 0; i < edptr->Clock_Length(); i++)
+		for (int i = 0; i < edptr->ClockLength(); i++)
 			edptr->GetClockPath(i)->SetDcc(DCC_NONE);
 	}
 	if (flag == 1)
-		system("minisat best.cnf temp.sat");
+		system("./minisat best.cnf temp.sat");
 	else
-		system("minisat sat.cnf temp.sat");
+		system("./minisat sat.cnf temp.sat");
 	
 	fstream file;
 	file.open("temp.sat", ios::in);
 	string line;
 	getline(file, line);
 	if (line.find("UNSAT")!=string::npos)
-		return false;
+		return 0;
 	int n1,n2;
 	while (file >> n1 >> n2){
+	
 		if (n1 < 0 && n2 < 0)
-			cbuffer_decode[(-n1 - 1) / 2]->SetDcc(DCC_NONE);
+			cbuffer_decode[(-n1 - 1) / 2]->SetDcc(DCC_NONE);		
 		else if (n1>0 && n2 < 0)
 			cbuffer_decode[(n1 - 1) / 2]->SetDcc(DCC_S);
 		else if (n1<0 && n2>0)
@@ -1338,7 +1440,7 @@ bool CallSatAndReadReport(int flag){
 	for (int i = 0; i < cbuffer_decode.size();i++)
 		if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
 			cout << ++cdcc << " : " << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
-	return true;
+	return cdcc;
 }
 
 
@@ -1398,17 +1500,34 @@ bool CheckImpact(PATH* pptr){
 	GATE* gptr;
 	gptr = pptr->Gate(0);
 	if (gptr->GetType() != "PI"){
-		for (int i = 0; i < gptr->Clock_Length();i++)
+		for (int i = 0; i < gptr->ClockLength();i++)
 			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
 				return true;
 	}
 	gptr = pptr->Gate(pptr->length() - 1);
 	if (gptr->GetType() != "PO"){
-		for (int i = 0; i < gptr->Clock_Length(); i++)
+		for (int i = 0; i < gptr->ClockLength(); i++)
 			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
 				return true;
 	}
 	return false;
+}
+
+void RemoveRDCCs(int index){
+	fstream file;
+	file.open("sat.cnf", ios::out | ios::app);
+	PATH* pptr = PathC[index];
+	GATE* stptr = pptr->Gate(0);
+	GATE* edptr = pptr->Gate(pptr->length() - 1);	
+	for (int i = 0; i < stptr->ClockLength(); i++){
+		file << '-' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 1 << " 0" << endl;
+		file << '-' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 2 << " 0" << endl;
+	}
+	for (int i = 0; i < edptr->ClockLength(); i++){
+		file << '-' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 1 << " 0" << endl;
+		file << '-' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 2 << " 0" << endl;
+	}
+	file.close();
 }
 bool RefineResult(double year){	
 	int catk = 0, cimp = 0;
@@ -1592,6 +1711,27 @@ void PrintStatus(double year){
 					}
 				}
 			}
+		}
+		else if (command.find("output candidate") != string::npos){
+			fstream op;
+			string fname = command.substr(17);
+			op.open(fname.c_str(), ios::out);
+			for (int i = 0; i < PathC.size(); i++){
+				PATH* pptr = PathC[i];
+				op << pptr->No() << endl;
+				op << "StartPoint : " << pptr->Gate(0)->GetName() << endl;
+				for (int j = 0; j < pptr->Gate(0)->ClockLength(); j++){
+					op << pptr->Gate(0)->GetClockPath(j)->GetName() << "=>";
+				}
+				op << endl;
+				op << "EndPoint : " << pptr->Gate(pptr->length() - 1)->GetName() << endl;
+				for (int j = 0; j < pptr->Gate(pptr->length() - 1)->ClockLength(); j++){
+					op << pptr->Gate(pptr->length() - 1)->GetClockPath(j)->GetName() << "=>";
+				}
+				op << endl << endl;
+			}			
+			op.close();
+			cout << "candidate data is saved in file : " << fname << endl;
 		}
 		getline(cin, command);
 	}

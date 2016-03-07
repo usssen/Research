@@ -12,17 +12,19 @@ void ReadCircuit(string filename);
 void ReadPath_l(string filename);
 //void ReadPath_s(string filename);
 void CalVertexWeight();
-void ChooseVertexWithGreedyMDS(double year,bool puthash);
+bool ChooseVertexWithGreedyMDS(double year,bool puthash);
 int HashAllClockBuffer();
 void GenerateSAT(string filename,double year);
-bool CallSatAndReadReport(int flag);
-void CheckPathAttackbility(double year,double margin,bool flag);
+int CallSatAndReadReport(int flag);
+void CheckPathAttackbility(double year,double margin,bool flag,double PLUS);
 double CalQuality(double year,double &upper,double &lower);
+void RemoveRDCCs(int index);
 bool RefineResult(double year);
 void EstimateTimeEV(double year);
 void ReadCpInfo(string filename);
 void CheckNoVio(double year);
 void PrintStatus(double year);
+void AdjustConnect();
 
 class GATE;
 
@@ -80,7 +82,7 @@ public:
 		clock_path.push_back(g); 
 	}
 	GATE* GetClockPath(int i){ return clock_path[i]; }			//找交會點? -> 從起點跑到不相同處即可
-	int Clock_Length(){ return clock_path.size(); }
+	int ClockLength(){ return clock_path.size(); }
 	void SetInTime(double t){ in_time = t; }					//in/out time在short/long path 相差1.0
 	void SetOutTime(double t){ out_time = t; }
 	double GetInTime(){ return in_time; }
