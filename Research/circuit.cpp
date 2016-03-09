@@ -921,13 +921,7 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){
 			if (Check_Connect(i, j, year) && i != j)
 				degree[i]++;
 		}
-	}
-	/*
-	for (int i = 0; i < No_node;i++)
-		if (degree[i] == 0)
-			PathC[i]->SetChoose(true);
-	return true;
-	*/
+	}	
 	
 	int mini, w_point;
 	vector<PN_W> cand;
@@ -979,7 +973,12 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){
 			for (int i = 0; i < cand.size(); i++){
 				s += degree[cand[i].pn];
 			}
-			int target = rand() % s;
+			int target;
+			if (s>0)
+				target = rand() % s;		//只有一個點時會出現 s = 0
+			else
+				target = 0;
+			
 			s = 0;
 			for (int i = 0; i < cand.size(); i++){
 				s += degree[cand[i].pn];
@@ -1167,6 +1166,9 @@ void GenerateSAT(string filename,double year){
 	file.open(filename.c_str(), ios::out);
 	map<GATE*, bool> exclusive;
 	HashAllClockBuffer();	//每個clockbuffer之編號為在cbuffer_code內對應的號碼*2+1,*2+2
+	GATE* c_source = Circuit[0].GetGate("ClockSource");
+	file << '-' << cbuffer_code[c_source] * 2 + 1 << " 0" << endl;
+	file << '-' << cbuffer_code[c_source] * 2 + 2 << " 0" << endl;
 	for (unsigned i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		if (pptr->IsSafe())	continue;
@@ -1404,13 +1406,13 @@ void GenerateSAT(string filename,double year){
 
 int CallSatAndReadReport(int flag){
 	//cout << "Start Call SAT" << endl;
-	for (int i = 0; i < PathC.size(); i++){
-		GATE* stptr = PathC[i]->Gate(0);
-		GATE* edptr = PathC[i]->Gate(PathC[i]->length() - 1);
-		for (int i = 0; i < stptr->ClockLength(); i++)
-			stptr->GetClockPath(i)->SetDcc(DCC_NONE);
-		for (int i = 0; i < edptr->ClockLength(); i++)
-			edptr->GetClockPath(i)->SetDcc(DCC_NONE);
+	for (int i = 0; i < PathR.size(); i++){
+		GATE* stptr = PathR[i].Gate(0);
+		GATE* edptr = PathR[i].Gate(PathR[i].length() - 1);
+		for (int j = 0; j < stptr->ClockLength(); j++)
+			stptr->GetClockPath(j)->SetDcc(DCC_NONE);
+		for (int j = 0; j < edptr->ClockLength(); j++)
+			edptr->GetClockPath(j)->SetDcc(DCC_NONE);
 	}
 	if (flag == 1)
 		system("./minisat best.cnf temp.sat");
@@ -1457,7 +1459,7 @@ double CalQuality(double year,double &up,double &low){
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper,lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, year);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j,mid);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
 				double Aging_P;														
 				if (upper > AgingRate(WORST, mid))													
 					Aging_P = AgingRate(WORST, mid);
@@ -1469,14 +1471,14 @@ double CalQuality(double year,double &up,double &low){
 					ed = mid;
 			}
 			if (mid < e_upper)
-				e_upper = mid;				//最早的點(因為發生錯誤最早在此時)
-
+				e_upper = mid;				//最早的點(因為發生錯誤最早在此時)	
+			st = 1.0, ed = 10.0;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
 				double upper, lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, year);
-				double Aging_P;														//lower bound
-				if (lower > AgingRate(WORST, mid))									//可能<0 待實驗狀況看看
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, mid);
+				double Aging_P;														
+				if (lower > AgingRate(WORST, mid))								
 					Aging_P = AgingRate(WORST, mid);
 				else
 					Aging_P = lower;
@@ -1486,13 +1488,12 @@ double CalQuality(double year,double &up,double &low){
 					ed = mid;
 			}
 			if (mid < e_lower)
-				e_lower = mid;
-		}
+				e_lower = mid;		
+		}		
 		if (up > e_upper)		
 			up = e_upper;
 		if (low < e_lower)
-			low = e_lower;
-		
+			low = e_lower;	
 	}
 	return 0.0;		//改成用bound或是montecarlo的方式
 }
@@ -1513,30 +1514,65 @@ bool CheckImpact(PATH* pptr){
 	return false;
 }
 
-void RemoveRDCCs(int index){
+void RemoveRDCCs(){
+	map<GATE*, bool> must;
+	for (int i = 0; i < PathC.size(); i++){
+		if (!PathC[i]->Is_Chosen())
+			continue;
+		PATH* pptr = PathC[i];
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		for (int j = 0; j < stptr->ClockLength(); j++){
+			if (stptr->GetClockPath(j)->GetDcc() != DCC_NONE)
+				must[stptr->GetClockPath(j)] = true;
+		}
+		for (int j = 0; j < edptr->ClockLength(); j++){
+			if (edptr->GetClockPath(j)->GetDcc()!=DCC_NONE)
+				must[edptr->GetClockPath(j)] = true;
+		}
+	}
 	fstream file;
 	file.open("sat.cnf", ios::out | ios::app);
-	PATH* pptr = PathC[index];
-	GATE* stptr = pptr->Gate(0);
-	GATE* edptr = pptr->Gate(pptr->length() - 1);	
-	for (int i = 0; i < stptr->ClockLength(); i++){
-		file << '-' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 1 << " 0" << endl;
-		file << '-' << cbuffer_code[stptr->GetClockPath(i)] * 2 + 2 << " 0" << endl;
-	}
-	for (int i = 0; i < edptr->ClockLength(); i++){
-		file << '-' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 1 << " 0" << endl;
-		file << '-' << cbuffer_code[edptr->GetClockPath(i)] * 2 + 2 << " 0" << endl;
+	for (int i = 0; i < PathR.size(); i++){			//unsafe的點有可能被放無關緊要的DCC(只要不會過早)
+		PATH* pptr = &PathR[i];
+		if (pptr->Is_Chosen() || pptr->IsSafe())
+			continue;
+		GATE* stptr = pptr->Gate(0);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		bool flag = true;
+		for (int j = 0; j < stptr->ClockLength(); j++){
+			if (stptr->GetClockPath(j)->GetDcc() != DCC_NONE && must.find(stptr->GetClockPath(j)) != must.end()){
+				flag = false;
+				break;
+			}
+		}
+		for (int j = 0; j < edptr->ClockLength() && flag; j++){
+			if (edptr->GetClockPath(j)->GetDcc() != DCC_NONE && must.find(edptr->GetClockPath(j)) != must.end()){
+				flag = false;
+				break;
+			}
+		}
+		if (!flag)
+			continue;
+		for (int j = 0; j < stptr->ClockLength(); j++){
+			file << '-' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 1 << " 0" << endl;
+			file << '-' << cbuffer_code[stptr->GetClockPath(j)] * 2 + 2 << " 0" << endl;
+		}
+		for (int j = 0; j < edptr->ClockLength(); j++){
+			file << '-' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << " 0" << endl;
+			file << '-' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << " 0" << endl;
+		}
 	}
 	file.close();
 }
-bool RefineResult(double year){	
+int RefineResult(double year){	
 	int catk = 0, cimp = 0;
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		GATE* stptr = pptr->Gate(0);
 		GATE* edptr = pptr->Gate(pptr->length() - 1);		
 		if (CheckImpact(pptr))	//有DCC放在clock path上
-			cimp++;
+			cimp++;		
 		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR))){		//lifetime降到期限內
 			catk++;			
 		}
@@ -1557,6 +1593,68 @@ bool RefineResult(double year){
 	cout << endl << catk << " Paths Be Attacked." << endl;
 	cout << cimp << " Paths Be Impacted." << endl;
 	
+	double maxe = 0;
+	int maxep = -1;
+	for (int i = 0; i < PathC.size(); i++){			//找"從哪個i點推出去的範圍最爛",將i加入
+		if (PathC[i]->IsTried())
+			continue;
+		double e_upper = 10000, e_lower = 10000;
+		for (int j = 0; j < PathC.size(); j++){
+			if (EdgeA[i][j]>9999)
+				continue;
+			double st = 1.0, ed = 10.0, mid;
+			while (ed - st > 0.0001){
+				mid = (st + ed) / 2;
+				double upper, lower;
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, mid);				//y = ax+b => 分成lower bound/upper bound去求最遠能差多少				
+				double Aging_P;
+				if (upper > AgingRate(WORST, mid))
+					Aging_P = AgingRate(WORST, mid);
+				else
+					Aging_P = upper;
+				if (Vio_Check(PathC[j], mid, Aging_P))
+					st = mid;
+				else
+					ed = mid;
+			}
+			if (mid < e_upper)
+				e_upper = mid;				//最早的點(因為發生錯誤最早在此時)	
+			st = 1.0, ed = 10.0;
+			while (ed - st > 0.0001){
+				mid = (st + ed) / 2;
+				double upper, lower;
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, mid);
+				double Aging_P;
+				if (lower > AgingRate(WORST, mid))
+					Aging_P = AgingRate(WORST, mid);
+				else
+					Aging_P = lower;
+				if (Vio_Check(PathC[j], mid, Aging_P))
+					st = mid;
+				else
+					ed = mid;
+			}
+			if (mid < e_lower)
+				e_lower = mid;
+		}
+		if (absl(e_upper - year) > maxe){
+			maxe = absl(e_upper - year);
+			maxep = i;
+		}
+		if (absl(e_lower - year) > maxe){
+			maxe = absl(e_lower - year);
+			maxep = i;
+		}
+	}
+	if (maxep >= 0){
+		PathC[maxep]->SetChoose(true);
+		GenerateSAT("sat.cnf", year);
+	}
+	return maxep;
+}
+
+bool AnotherSol(){
+	
 	fstream file;
 	fstream solution;
 	file.open("sat.cnf", ios::out | ios::app);
@@ -1568,10 +1666,10 @@ bool RefineResult(double year){
 	string line;
 	getline(solution, line);
 	if (line.find("UNSAT") != string::npos)
-		return false;	
+		return false;
 	int dccno;
 	while (solution >> dccno){
-		file << -dccno << ' ';
+	file << -dccno << ' ';
 	}
 	file << endl;
 	file.close();
@@ -1641,16 +1739,16 @@ void PrintStatus(double year){
 			for (int i = 0; i < PathC.size(); i++){
 				if (Vio_Check(PathC[i], year+ERROR, AgingRate(WORST, year+ERROR)))	//只print有機會攻擊成功的
 					continue;
-				if (EdgeA[i][ac] >9999)
+				if (EdgeA[ac][i] >9999)
 					cout << "INF" << endl;
 				else{
 					cout << "Ag" << PathC[i]->No() << " = " << EdgeA[ac][i] << "Ag" << a << " + " << EdgeB[ac][i] << " +- " << ser[ac][i] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10)) << endl;
-					CalPreInv(AgingRate(WORST, year), upper, lower, i, ac, year);
+					CalPreInv(AgingRate(WORST, year), upper, lower, ac, i, year);
 					cout << AgingRate(WORST, year)*100 << "% -> " << lower * 100 << "% ~ " << upper * 100 << '%' << endl;
 					double st = 1.0, ed = 10.0,mid;
 					while (ed - st > 0.0001){
 						mid = (st + ed) / 2;
-						CalPreInv(AgingRate(WORST, mid), upper, lower, i, ac, mid);
+						CalPreInv(AgingRate(WORST, mid), upper, lower, ac, i, mid);
 						if (Vio_Check(PathC[i], mid, upper))
 							st = mid;
 						else
@@ -1660,7 +1758,7 @@ void PrintStatus(double year){
 					st = 1.0, ed = 10.0;
 					while (ed - st > 0.0001){
 						mid = (st + ed) / 2;
-						CalPreInv(AgingRate(WORST, mid), upper,lower, i, ac, mid);
+						CalPreInv(AgingRate(WORST, mid), upper,lower, ac, i, mid);
 						if (Vio_Check(PathC[i], mid,lower))
 							st = mid;
 						else
@@ -1732,6 +1830,21 @@ void PrintStatus(double year){
 			}			
 			op.close();
 			cout << "candidate data is saved in file : " << fname << endl;
+		}
+		else if (command.find("mine") != string::npos){
+			for (int i = 0; i < PathR.size(); i++){
+				if (!PathR[i].IsSafe() && !PathR[i].CheckAttack()){
+					cout << PathR[i].No()<< ' ';
+					if (PathR[i].Gate(0)->GetType() == "PI")
+						cout << "PI -> ";
+					else
+						cout << "FF -> ";
+					if (PathR[i].Gate(PathR[i].length() - 1)->GetType() == "PO")
+						cout << "PO" << endl;
+					else
+						cout << "FF" << endl;
+				}
+			}						
 		}
 		getline(cin, command);
 	}

@@ -18,13 +18,14 @@ void GenerateSAT(string filename,double year);
 int CallSatAndReadReport(int flag);
 void CheckPathAttackbility(double year,double margin,bool flag,double PLUS);
 double CalQuality(double year,double &upper,double &lower);
-void RemoveRDCCs(int index);
-bool RefineResult(double year);
+void RemoveRDCCs();
+int RefineResult(double year);
 void EstimateTimeEV(double year);
 void ReadCpInfo(string filename);
 void CheckNoVio(double year);
 void PrintStatus(double year);
 void AdjustConnect();
+bool AnotherSol();
 
 class GATE;
 
@@ -154,6 +155,7 @@ private:
 	bool attackable;
 	bool safe;
 	bool choose;
+	bool tried;					//用於在refine時用過與否
 	unsigned no;	
 	PATHTYPE type;
 public:
@@ -204,7 +206,9 @@ public:
 	void SetPSD(double t) { psd = t; }
 	double GetPSD(){ return psd; }
 	void SetSafe(bool s){ safe = s; }
-	bool IsSafe(){ return safe; }	
+	bool IsSafe(){ return safe; }
+	void SetTried(bool t){ tried = t; }
+	bool IsTried() { return tried; }
 };
 
 

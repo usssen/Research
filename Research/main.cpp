@@ -42,20 +42,28 @@ inline double minf(double a, double b){
 	return b;
 }
 
-bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,double n){
-	if (absf(maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n))) < 0.001){
-		if (minf(absf(u1 - n), absf(l1 - n)) < minf(absf(u2 - n), absf(l2 - n))){
-			bu = u1, bl = l1;
+bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,double n,int &dcb,int dc1,int dc2){
+	if (absf(maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n))) < 0.01){
+		if (absf(minf(absf(u1 - n), absf(l1 - n)) - minf(absf(u2 - n), absf(l2 - n))) < 0.01){
+			if (dc1>dc2){
+				bu = u1, bl = l1, dcb = dc1;
+				return false;
+			}
+			bu = u2, bl = l2, dcb = dc2;
+			return true;
+		}
+		else if (minf(absf(u1 - n), absf(l1 - n)) < minf(absf(u2 - n), absf(l2 - n))){
+			bu = u1, bl = l1, dcb = dc1;
 			return false;
 		}
-		bu = u2, bl = l2;
+		bu = u2, bl = l2, dcb = dc2;
 		return true;
 	}
-	if (maxf(absf(u1 - n), absf(l1 - n)) < maxf(absf(u2 - n), absf(l2 - n))){
-		bu = u1, bl = l1;
+	else if (maxf(absf(u1 - n), absf(l1 - n)) < maxf(absf(u2 - n), absf(l2 - n))){
+		bu = u1, bl = l1, dcb = dc1; 
 		return false;
 	}
-	bu = u2, bl = l2;
+	bu = u2, bl = l2, dcb = dc2;
 	return true;
 }
 
@@ -144,6 +152,7 @@ int main(int argc, char* argv[]){
 	}
 	bool* bestnode = new bool[PathC.size()];
 	double bestup = 100, bestlow = -100;
+	int bestdcc = 10000;
 	string s;
 	fstream fileres;
 	int fr = 999999;
@@ -152,51 +161,52 @@ int main(int argc, char* argv[]){
 		for (; tryi < trylimit; tryi++){
 			cout << "Round : " << tryi << endl;
 			if (!ChooseVertexWithGreedyMDS(year, false)){
-				ChooseVertexWithGreedyMDS(year, true);
 				cout << "Not Domination Set!" << endl;
+				ChooseVertexWithGreedyMDS(year, true);
 				continue;
 			}
 			GenerateSAT("sat.cnf", year);
-			CallSatAndReadReport(0);
-
-			fileres.open("temp.sat");
-			getline(fileres, s);
-			fileres.close();
-			if (s.find("UNSAT") != string::npos){
+			int oridccs = CallSatAndReadReport(0);	//0: 一般找解 1:最佳解
+			ChooseVertexWithGreedyMDS(year, true);
+			if (!oridccs){
 				if (bestup<10 && bestlow>1)
 					cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-				ChooseVertexWithGreedyMDS(year, true);
+				//ChooseVertexWithGreedyMDS(year, true);
 				continue;
 			}
 			if (fr > tryi)
-				fr = tryi;
+				fr = tryi;	
 			
 			cout << endl << "Try to Remove Redundant DCCs." << endl;
-			int mindccs = CallSatAndReadReport(0);
-			system("cp sat.cnf bestdccs.cnf");
-
-			for (int i = 0; i < PathC.size(); i++){
-				if (PathC[i]->Is_Chosen())
-					continue;
-				system("cp sat.cnf backup.cnf");
-				RemoveRDCCs(i);
-				int dccs = CallSatAndReadReport(0);
+			for (int i = 0; i < PathC.size(); i++)
+				PathC[i]->SetTried(PathC[i]->Is_Chosen());
+			for (int i = 0; i < atoi(argv[6]); i++){
+				int AddNodeIndex = RefineResult(year);
+				if (AddNodeIndex < 0)
+					break;
+				PathC[AddNodeIndex]->SetTried(true);
+				int dccs = CallSatAndReadReport(0);			
 				if (!dccs){
-					system("cp backup.cnf sat.cnf");
+					PathC[AddNodeIndex]->SetChoose(false);
 					continue;
-				}
-				if (dccs < mindccs){
-					mindccs = dccs;
-					system("cp sat.cnf bestdccs.cnf");
-				}			
+				}						
+				oridccs = dccs;
 			}
-			//如何取捨Quality和DCC ?
-			system("cp bestdccs.cnf sat.cnf");
+			GenerateSAT("sat.cnf", year);
 			
-			CallSatAndReadReport(0);		
+			system("cp sat.cnf backup.cnf");
+			RemoveRDCCs();
+			int dccss = CallSatAndReadReport(0);
+			if (dccss == 0 || oridccs < dccss){
+				system("cp backup.cnf sat.cnf");
+			}
+			
+			//如何取捨Quality和DCC ?
+			
+			int dccs = CallSatAndReadReport(0);
 			double upper, lower;
 			CalQuality(year, upper, lower);
-			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
+			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
 				system("cp sat.cnf best.cnf");
@@ -204,24 +214,6 @@ int main(int argc, char* argv[]){
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
 	
-
-			for (int i = 1; i <= atoi(argv[6]); i++){
-				if (!RefineResult(year))
-					break;
-				cout << "Refine #" << i << " : " << endl;
-				if (!CallSatAndReadReport(0)){	//0: 一般找解 1:最佳解
-					//cout << "Can't Refine Anymore" << endl;
-					break;
-				}
-				CalQuality(year, upper, lower);
-				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){
-					for (int i = 0; i < PathC.size(); i++)
-						bestnode[i] = PathC[i]->Is_Chosen();
-					system("cp sat.cnf best.cnf");
-				}
-				cout << "Q = " << upper << " ~ " << lower << endl;
-				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			}
 		}
 		if (bestup>10){
 			cout << "NO SOLUTION!, Input New Try Limit or 0 for Give Up. " << endl;
@@ -233,24 +225,27 @@ int main(int argc, char* argv[]){
 		}
 	} while (bestup > 10);
 
-	bestup = 100, bestlow = -100;
+	bestup = 100, bestlow = -100, bestdcc = 10000;
 	cout << "Final Refinement" << endl;
 	for (int i = 0; i < PathC.size(); i++)
 		PathC[i]->SetChoose(bestnode[i]);
 	system("cp best.cnf sat.cnf");
-	CallSatAndReadReport(0);
+	int dccs = CallSatAndReadReport(0);
 	int t = 10;	//最終refine 10次
 	do{
 		double upper, lower;
 		CalQuality(year, upper, lower);		
-		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year)){			
+		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){			
 			system("cp sat.cnf best.cnf");
 		}
 		cout << "Q = " << upper << " ~ " << lower << endl;
 		cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-		if (!RefineResult(year))
+		if (!AnotherSol())
 			break;
-	} while (t--&&CallSatAndReadReport(0));
+		dccs = CallSatAndReadReport(0);
+		if (!dccs)
+			break;		
+	} while (t--);
 	cout << endl << endl << "Final Result : " << endl;
 	CallSatAndReadReport(1);
 	RefineResult(year);
@@ -262,7 +257,7 @@ int main(int argc, char* argv[]){
 	cout << "Enter the year : " << endl;
 	double y;
 	cin >> y;
-	PrintStatus(y);
 	cout << fr << endl;
+	PrintStatus(y);	
 	return 0;
 }
