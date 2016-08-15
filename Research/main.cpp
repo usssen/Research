@@ -45,7 +45,7 @@ inline double minf(double a, double b){
 bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,double n,int &dcb,int dc1,int dc2){
 	if (absf(maxf(absf(u1 - n), absf(l1 - n)) - maxf(absf(u2 - n), absf(l2 - n))) < 0.01){
 		if (absf(minf(absf(u1 - n), absf(l1 - n)) - minf(absf(u2 - n), absf(l2 - n))) < 0.01){
-			if (dc1>dc2){
+			if (dc1<dc2){
 				bu = u1, bl = l1, dcb = dc1;
 				return false;
 			}
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]){
 	Circuit[0].PutClockSource();
 	cout << "Reading Cirtical Paths Information...";
 	ReadPath_l(filename);
-	cout << "finished." << endl;
+	cout << "finished." << endl;	
 	//ReadPath_s(filename);
 	//cout << "Read Shortest Path Finished." << endl;	
 	int year = atoi(argv[4]);
@@ -100,7 +100,8 @@ int main(int argc, char* argv[]){
 	double PLUS = ERROR;
 	fstream file;
 	string line;
-	file.open("Parameter.txt"); 
+	file.open("Parameter.txt");
+	double tight = 1.000001;
 	while (getline(file, line)){
 		if (line.find("PLUS") != string::npos){
 			if (line.find("auto") != string::npos){
@@ -115,15 +116,21 @@ int main(int argc, char* argv[]){
 			}
 			break;
 		}
+		if (line.find("TIGHT") != string::npos){
+			tight = atof(line.c_str() + 5);
+		}
 	}
 	cout << ERROR << ' ' << PLUS << endl;
-	CheckPathAttackbility(year, 1.001, true, PLUS);
+	CheckPathAttackbility(year, tight, true, PLUS);
 
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
 	}
-	CheckNoVio(year + ERROR);
+	if (!CheckNoVio(year + PLUS)){
+		cout << "Too Tight Clock Period!" << endl;
+		return 0;
+	}
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
@@ -141,7 +148,8 @@ int main(int argc, char* argv[]){
 	//filename = "s38417.cp";
 	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
-	cout << "finisned." << endl;
+	cout << "finisned." << endl;		
+	CheckOriLifeTime();	
 	/*
 	cout << "Initial Estimate Time" << endl;
 	EstimateTimeEV(year);
@@ -180,7 +188,7 @@ int main(int argc, char* argv[]){
 			cout << endl << "Try to Remove Redundant DCCs." << endl;
 			for (int i = 0; i < PathC.size(); i++)
 				PathC[i]->SetTried(PathC[i]->Is_Chosen());
-			for (int i = 0; i < atoi(argv[6]); i++){
+			for (int i = 0; i < atoi(argv[6]); i++){		//太多次可能造成加入過多點但解沒差多少 而造成多餘的DCC
 				int AddNodeIndex = RefineResult(year);
 				if (AddNodeIndex < 0)
 					break;
@@ -205,7 +213,7 @@ int main(int argc, char* argv[]){
 			
 			int dccs = CallSatAndReadReport(0);
 			double upper, lower;
-			CalQuality(year, upper, lower);
+			Monte_CalQuality(year, upper, lower);
 			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
@@ -213,7 +221,20 @@ int main(int argc, char* argv[]){
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-	
+			for (int i = 0; i<atoi(argv[6]); i++){				
+				if (!AnotherSol())
+					break;
+				dccs = CallSatAndReadReport(0);
+				if (!dccs)
+					break;
+				//double upper, lower;
+				Monte_CalQuality(year, upper, lower);
+				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year, bestdcc, bestdcc, dccs)){
+					system("cp sat.cnf best.cnf");
+				}
+				cout << "Q = " << upper << " ~ " << lower << endl;
+				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+			}	
 		}
 		if (bestup>10){
 			cout << "NO SOLUTION!, Input New Try Limit or 0 for Give Up. " << endl;
@@ -234,7 +255,7 @@ int main(int argc, char* argv[]){
 	int t = 10;	//最終refine 10次
 	do{
 		double upper, lower;
-		CalQuality(year, upper, lower);		
+		Monte_CalQuality(year, upper, lower);		
 		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){			
 			system("cp sat.cnf best.cnf");
 		}
@@ -254,10 +275,10 @@ int main(int argc, char* argv[]){
 	for (int i = 1; i <= 4; i++)
 		cout << info[i] << ' ';
 	cout << endl;
+	cout << fr << endl;
 	cout << "Enter the year : " << endl;
 	double y;
-	cin >> y;
-	cout << fr << endl;
+	cin >> y;	
 	PrintStatus(y);	
 	return 0;
 }

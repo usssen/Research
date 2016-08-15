@@ -18,14 +18,16 @@ void GenerateSAT(string filename,double year);
 int CallSatAndReadReport(int flag);
 void CheckPathAttackbility(double year,double margin,bool flag,double PLUS);
 double CalQuality(double year,double &upper,double &lower);
+double Monte_CalQuality(double year, double &upper, double &lower);
 void RemoveRDCCs();
 int RefineResult(double year);
 void EstimateTimeEV(double year);
 void ReadCpInfo(string filename);
-void CheckNoVio(double year);
+bool CheckNoVio(double year);
 void PrintStatus(double year);
 void AdjustConnect();
 bool AnotherSol();
+void CheckOriLifeTime();
 
 class GATE;
 

@@ -357,3 +357,164 @@ break;
 }
 }
 */
+
+
+/*
+
+void EstimateTimeEV(double year){
+int No_node = PathC.size();
+for (int i = 0; i < No_node; i++){
+cout << '\r';
+printf("NODE: %3d/%3d", i + 1, No_node);
+PATH* pptr = PathC[i];
+GATE* stptr = pptr->Gate(0);
+GATE* edptr = pptr->Gate(pptr->length() - 1);
+double max = 0;
+double max2 = 0;
+for (int k = 0; k < No_node;k++){
+if (EdgeA[k][i]>9999)
+continue;
+double pv = 0;		//	期望值&解 (path i的, 由path k推得)
+double pv2 = 0;		//	類標準差 -> sigma(xi - avg)^2 /N  用給定時間代替avg
+int solc = 0;
+if (stptr->GetType() == "PI"){
+for (int j = 0; j < edptr->ClockLength(); j++){
+for (int x = 1; x < 4; x++){
+edptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+double st = year - ERROR, ed = year + ERROR, mid;
+while (ed - st>0.0001){
+mid = (st + ed) / 2;
+double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year); //從第k個path點推到第i個path 找第i個path的期望值
+if (Aging_P>AgingRate(WORST,mid))
+Aging_P = AgingRate(WORST, mid);
+if (Vio_Check(pptr, mid, Aging_P))
+st = mid;
+else
+ed = mid;
+}
+pv += mid;
+pv2 += (mid - year)*(mid - year);
+solc++;
+}
+edptr->GetClockPath(j)->SetDcc(DCC_NONE);
+}
+}
+}
+else if (edptr->GetType() == "PO"){
+for (int j = 0; j < stptr->ClockLength(); j++){
+for (int x = 1; x < 4; x++){
+stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+double st = year - ERROR, ed = year + ERROR, mid;
+while (ed - st>0.0001){
+mid = (st + ed) / 2;
+double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+if (Aging_P>AgingRate(WORST, mid))
+Aging_P = AgingRate(WORST, mid);
+if (Vio_Check(pptr, mid, Aging_P))
+st = mid;
+else
+ed = mid;
+}
+pv += mid;
+pv2 += (mid - year)*(mid - year);
+solc++;
+}
+stptr->GetClockPath(j)->SetDcc(DCC_NONE);
+}
+}
+}
+else{
+int branch = 0;
+while (stptr->GetClockPath(branch) == edptr->GetClockPath(branch)){
+for (int x = 1; x < 4; x++){
+stptr->GetClockPath(branch)->SetDcc((AGINGTYPE)x);
+if (!Vio_Check(pptr, year + ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year - ERROR, AgingRate(WORST, year - ERROR))){
+double st = year - ERROR, ed = year + ERROR, mid;
+while (ed - st>0.0001){
+mid = (st + ed) / 2;
+double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+if (Aging_P>AgingRate(WORST, mid))
+Aging_P = AgingRate(WORST, mid);
+if (Vio_Check(pptr, mid, Aging_P))
+st = mid;
+else
+ed = mid;
+}
+pv += mid;
+pv2 += (mid - year)*(mid - year);
+solc++;
+}
+stptr->GetClockPath(branch)->SetDcc(DCC_NONE);
+}
+branch++;
+}
+for (int j = branch; j < stptr->ClockLength(); j++){
+for (int j2 = branch; j2 < edptr->ClockLength(); j2++){
+for (int x = 0; x < 4; x++){
+for (int y = 0; y<4; y++){
+if (x == 0 && y == 0)	continue;
+edptr->GetClockPath(j2)->SetDcc((AGINGTYPE)y);
+stptr->GetClockPath(j)->SetDcc((AGINGTYPE)x);
+if (!Vio_Check(pptr, year+ERROR, AgingRate(WORST, year + ERROR)) && Vio_Check(pptr, year-ERROR, AgingRate(WORST, year - ERROR))){
+double st = year - ERROR, ed = year + ERROR, mid;
+while (ed - st>0.0001){
+mid = (st + ed) / 2;
+double Aging_P = CalPreAging(AgingRate(WORST, mid), k, i, year);
+if (Aging_P>AgingRate(WORST, mid))
+Aging_P = AgingRate(WORST, mid);
+if (Vio_Check(pptr, mid, Aging_P))
+st = mid;
+else
+ed = mid;
+}
+pv += mid;
+pv2 += (mid - year)*(mid - year);
+solc++;
+}
+stptr->GetClockPath(j)->SetDcc(DCC_NONE);
+edptr->GetClockPath(j2)->SetDcc(DCC_NONE);
+}
+}
+}
+}
+}
+pv /= (double)solc;
+pv2 /= (double)solc;
+if (absl(pv - (double)year) > absl(max-(double)year))
+max = pv;
+if (pv2 > max2)
+max2 = pv2;
+}
+pptr->SetEstimateTime(max);
+pptr->SetPSD(max2);
+}
+cout << endl;
+}
+
+double EstimateAddTimes(double year,int p){	//p是要加入的點
+double max = 0;
+for (int i = 0; i < PathC.size(); i++){
+if (PathC[i]->Is_Chosen() && absl(year - PathC[i]->GetEstimateTime())>max)
+max = absl(year - PathC[i]->GetEstimateTime());
+}
+if (absl(year - PathC[p]->GetEstimateTime()) > max)
+return absl(year - PathC[p]->GetEstimateTime()) - max;		//傳回的是加入p後會差多少 => 如果比原本的還小就是0 不然就回傳差值
+return 0.0;
+}
+
+double EstimatePSD(int p){
+double max = 0;
+double newmax = PathC[p]->GetPSD();
+for (int i = 0; i < PathC.size(); i++){
+if (PathC[i]->Is_Chosen() && PathC[i]->GetPSD()>max){		//同樣 傳回類標準差加入前後的最大值差 => 比原本小即0
+max = PathC[i]->GetPSD();
+}
+}
+if (max > newmax)
+return 0.0;
+
+return newmax - max;
+}
+*/
