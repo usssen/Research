@@ -812,8 +812,8 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){
 			//w -= EstimatePSD(i);		//加入i點後增加的"類標準差"
 			
 			w += (double)degree[i] / (double)w_point;	//加入i點後可減少的白點之比
-			w -= 3*Overlap(i);
-			w -= 2*AtkPointRate(PathC[i]);
+			w -= 1*Overlap(i);							//加入點和其它點的重疊率
+			w -= 2*AtkPointRate(PathC[i]);				//自身的重疊率
 			cand.push_back(PN_W(i, w));
 		}
 		if (cand.size() == 0){
@@ -1320,7 +1320,7 @@ int CallSatAndReadReport(int flag){
 void CheckOriLifeTime(){	//有可能決定Tc的path不在candidate中(mine裡)
 	cout << "Check Original Lifetime." << endl;		//為何會有>10? 較後面的Path slack大很多(自身lifetime長) 且和前面cp的關連低(前端老化不足)
 	double up = 10.0, low = 0.0;					//為何會有接近7? 1.Path之間的slack都接近=>不管老化哪個都不會太差 2.path之間相關度都高
-	for (int i = 0; i < PathC.size(); i++){
+	for (int i = 0; i < PathC.size(); i++){			//不同candidate會造成此處不同... 取聯集
 		if (!PathC[i]->CheckAttack())
 			continue;
 		double e_upper = 10000, e_lower = 10000;
@@ -1435,9 +1435,9 @@ double Monte_CalQuality(double year, double &up, double &low){
 	up = 10.0, low = 0.0;
 	vector<double> monte;
 	monte.clear();
-	int TryT = 1000000 / (PathC.size()*PathC.size());
-	if (TryT <= 100)
-		TryT = 100;
+	int TryT = 3000 / PathC.size();
+	if (TryT < 10)
+		TryT = 10;
 	for (int i = 0; i < PathC.size(); i++){
 		if (!PathC[i]->CheckAttack())
 			continue;
@@ -1472,7 +1472,7 @@ double Monte_CalQuality(double year, double &up, double &low){
 	sort(monte.begin(), monte.end());
 	int front = 0, back = monte.size() - 1;
 	up = monte[front], low = monte[back];
-	while (front + monte.size() - 1 - back <= monte.size()/20 && monte[back]-monte[front]>0.05){
+	while (front + monte.size() - 1 - back <= monte.size()/100 && monte[back]-monte[front]>0.05){
 		if (absff(monte[front] - (double)year)>absff(monte[back] - (double)year))
 			up = monte[++front];
 		else

@@ -7,11 +7,12 @@
 #include "aging.h"
 #include<signal.h>
 
+/*
 void inthandler(int s){
 	CallSatAndReadReport(1);
 	exit(1);
 }
-
+*/
 
 using namespace std;
 vector<CIRCUIT> Circuit;
@@ -22,7 +23,7 @@ double **cor;
 double **ser;
 double info[5];
 vector<PATH*> PathC;
-double ERROR = 1.0;
+double ERROR = 1.0;		//改個名
 
 inline double absf(double x){
 	if (x < 0)
@@ -73,16 +74,18 @@ int main(int argc, char* argv[]){
 		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times] [ERROR limit]" << endl;
 		return 0;
 	}
-	signal(SIGINT, inthandler);
+	//signal(SIGINT, inthandler);
+	clock_t tst,tsolst;
+	double t_sol = 0, t_nosol = 0;
+	int c_sol = 0, c_nosol = 0;
+	tst = clock();
 	srand(time(NULL));
 	string filename;
-	filename = argv[1];
-	//filename = "s38417.vg";
+	filename = argv[1];	
 	cout << "Reading Circuit...";
 	ReadCircuit(filename);
 	cout << "Finished." << endl;
-	filename = argv[2];
-	//filename = "s38417.rpt";
+	filename = argv[2];	
 	Circuit[0].PutClockSource();
 	cout << "Reading Cirtical Paths Information...";
 	ReadPath_l(filename);
@@ -93,8 +96,7 @@ int main(int argc, char* argv[]){
 	ERROR = year*0.1;
 	if (argc > 7){
 		ERROR = atof(argv[7]);
-	}	
-	//int year = 5;
+	}		
 	ReadAgingData();
 	AdjustConnect();
 	double PLUS = ERROR;
@@ -102,6 +104,8 @@ int main(int argc, char* argv[]){
 	string line;
 	file.open("Parameter.txt");
 	double tight = 1.000001;
+	int FINAL = 0;
+	bool monte_s = false;
 	while (getline(file, line)){
 		if (line.find("PLUS") != string::npos){
 			if (line.find("auto") != string::npos){
@@ -114,15 +118,26 @@ int main(int argc, char* argv[]){
 			else{
 				PLUS = atof(line.c_str() + 4);
 			}
-			break;
 		}
 		if (line.find("TIGHT") != string::npos){
 			tight = atof(line.c_str() + 5);
 		}
+		if (line.find("FINAL") != string::npos){
+			FINAL = atof(line.c_str() + 5);
+		}
+		if (line.find("MONTE YES") != string::npos){
+			monte_s = true;
+		}
 	}
-	cout << ERROR << ' ' << PLUS << endl;
+	cout << "TIGHT = " << tight << endl << "Final Refinament = " << FINAL << endl;
+	cout << "Monte-Carlo is ";
+	if (monte_s)
+		cout << "OPEN" << endl;
+	else
+		cout << "CLOSE" << endl;
+	//cout << ERROR << ' ' << PLUS << endl;
 	CheckPathAttackbility(year, tight, true, PLUS);
-
+	
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
@@ -144,29 +159,26 @@ int main(int argc, char* argv[]){
 		cor[i] = new double[ss];		
 		ser[i] = new double[ss];
 	}
-	filename = argv[3];
-	//filename = "s38417.cp";
+	filename = argv[3];	
 	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
 	cout << "finisned." << endl;		
-	CheckOriLifeTime();	
-	/*
-	cout << "Initial Estimate Time" << endl;
-	EstimateTimeEV(year);
-	*/
-	if (argc > 8){
-		cout << "Please Input Command : ";
-		PrintStatus(year);
-	}
+	CheckOriLifeTime();		
+	
+	//PrintStatus(year);
+	
 	bool* bestnode = new bool[PathC.size()];
 	double bestup = 100, bestlow = -100;
+	double monteU, monteL;
 	int bestdcc = 10000;
 	string s;
 	fstream fileres;
 	int fr = 999999;
-	int trylimit = atoi(argv[5]),tryi = 0;	
+	int trylimit = atoi(argv[5]),tryi = 0;
+	//tryi < trylimit
 	do{
-		for (; tryi < trylimit; tryi++){
+		for (; c_sol < 10; tryi++){
+			tsolst = clock();
 			cout << "Round : " << tryi << endl;
 			if (!ChooseVertexWithGreedyMDS(year, false)){
 				cout << "Not Domination Set!" << endl;
@@ -179,7 +191,8 @@ int main(int argc, char* argv[]){
 			if (!oridccs){
 				if (bestup<10 && bestlow>1)
 					cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-				//ChooseVertexWithGreedyMDS(year, true);
+				c_nosol++;
+				t_nosol += (double)(clock() - tsolst) / CLOCKS_PER_SEC;
 				continue;
 			}
 			if (fr > tryi)
@@ -213,8 +226,10 @@ int main(int argc, char* argv[]){
 			
 			int dccs = CallSatAndReadReport(0);
 			double upper, lower;
-			Monte_CalQuality(year, upper, lower);
+			CalQuality(year, upper, lower);
 			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){
+				if (monte_s)
+					Monte_CalQuality(year, monteU, monteL);
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
 				system("cp sat.cnf best.cnf");
@@ -228,13 +243,17 @@ int main(int argc, char* argv[]){
 				if (!dccs)
 					break;
 				//double upper, lower;
-				Monte_CalQuality(year, upper, lower);
+				CalQuality(year, upper, lower);
 				if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year, bestdcc, bestdcc, dccs)){
+					if (monte_s)
+						Monte_CalQuality(year, monteU, monteL);
 					system("cp sat.cnf best.cnf");
 				}
 				cout << "Q = " << upper << " ~ " << lower << endl;
 				cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			}	
+			}
+			c_sol++;
+			t_sol += (double)(clock() - tsolst) / CLOCKS_PER_SEC;
 		}
 		if (bestup>10){
 			cout << "NO SOLUTION!, Input New Try Limit or 0 for Give Up. " << endl;
@@ -252,11 +271,12 @@ int main(int argc, char* argv[]){
 		PathC[i]->SetChoose(bestnode[i]);
 	system("cp best.cnf sat.cnf");
 	int dccs = CallSatAndReadReport(0);
-	int t = 10;	//最終refine 10次
 	do{
 		double upper, lower;
-		Monte_CalQuality(year, upper, lower);		
+		CalQuality(year, upper, lower);		
 		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){			
+			if (monte_s)
+				Monte_CalQuality(year, monteU, monteL);
 			system("cp sat.cnf best.cnf");
 		}
 		cout << "Q = " << upper << " ~ " << lower << endl;
@@ -266,16 +286,22 @@ int main(int argc, char* argv[]){
 		dccs = CallSatAndReadReport(0);
 		if (!dccs)
 			break;		
-	} while (t--);
+	} while (FINAL--);
 	cout << endl << endl << "Final Result : " << endl;
 	CallSatAndReadReport(1);
 	RefineResult(year);
 	cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+	if (monte_s){
+		cout << "BEST Q(Monte) = " << monteU << " ~ " << monteL << endl;
+	}
 	cout << "Clock Period = " << info[0] << endl;
 	for (int i = 1; i <= 4; i++)
 		cout << info[i] << ' ';
 	cout << endl;
 	cout << fr << endl;
+	cout << "Total Runtime : " << (clock() - tst) / CLOCKS_PER_SEC << endl;
+	cout << "Solution count = " << c_sol << " Time = " << t_sol << endl;
+	cout << "No solution count = " << c_nosol << " Time = " << t_nosol << endl;
 	cout << "Enter the year : " << endl;
 	double y;
 	cin >> y;	
