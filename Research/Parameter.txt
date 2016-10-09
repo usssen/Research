@@ -1,7 +1,7 @@
 0.0039 0.5 0.2
-thershold 0.36
-edge error 0.05
+thershold 0.80
+edge error 0.01
 PLUS fixed 7
 TIGHT 1.000001
-FINAL 0
-MONTE NO
+FINAL 10
+MONTE YES

@@ -16,14 +16,14 @@ void inthandler(int s){
 
 using namespace std;
 vector<CIRCUIT> Circuit;
-vector<PATH> PathR;
+vector<PATH> PathR;		//所有的path
 double **EdgeA;
 double **EdgeB;
 double **cor;
 double **ser;
 double info[5];
-vector<PATH*> PathC;
-double ERROR = 1.0;		//改個名
+vector<PATH*> PathC;	//candidate 的path
+double ERROR = 1.0;		//可容忍的lifetime誤差(改個名)
 
 inline double absf(double x){
 	if (x < 0)
@@ -135,7 +135,6 @@ int main(int argc, char* argv[]){
 		cout << "OPEN" << endl;
 	else
 		cout << "CLOSE" << endl;
-	//cout << ERROR << ' ' << PLUS << endl;
 	CheckPathAttackbility(year, tight, true, PLUS);
 	
 	if (PathC.size() <= 0){
@@ -151,7 +150,7 @@ int main(int argc, char* argv[]){
 	EdgeA = new double*[ss];		// y = ax+b
 	EdgeB = new double*[ss];		
 	cor = new double*[ss];			//相關係數	
-	ser = new double*[ss];	//error
+	ser = new double*[ss];			//標準誤
 
 	for (int i = 0; i < ss; i++){
 		EdgeA[i] = new double[ss];
@@ -173,20 +172,19 @@ int main(int argc, char* argv[]){
 	int bestdcc = 10000;
 	string s;
 	fstream fileres;
-	int fr = 999999;
+	//int fr = 999999;
 	int trylimit = atoi(argv[5]),tryi = 0;
-	//tryi < trylimit
 	do{
-		for (; c_sol < 10; tryi++){
+		for (; tryi < trylimit; tryi++){
 			tsolst = clock();
 			cout << "Round : " << tryi << endl;
-			if (!ChooseVertexWithGreedyMDS(year, false)){
+			if (!ChooseVertexWithGreedyMDS(year, false)){	
 				cout << "Not Domination Set!" << endl;
-				ChooseVertexWithGreedyMDS(year, true);
+				ChooseVertexWithGreedyMDS(year, true);	//找shortlist的function, 回傳值false時表沒有domination set
 				continue;
 			}
-			GenerateSAT("sat.cnf", year);
-			int oridccs = CallSatAndReadReport(0);	//0: 一般找解 1:最佳解
+			GenerateSAT("sat.cnf", year);				//產生CNF表達式
+			int oridccs = CallSatAndReadReport(0);		//用來呼叫SAT tool並將讀取結果, input 0: 一般找解 1:最佳解, 回傳值為DCC的數量
 			ChooseVertexWithGreedyMDS(year, true);
 			if (!oridccs){
 				if (bestup<10 && bestlow>1)
@@ -195,17 +193,17 @@ int main(int argc, char* argv[]){
 				t_nosol += (double)(clock() - tsolst) / CLOCKS_PER_SEC;
 				continue;
 			}
+			/*
 			if (fr > tryi)
 				fr = tryi;	
-			
-			cout << endl << "Try to Remove Redundant DCCs." << endl;
-			for (int i = 0; i < PathC.size(); i++)
+			*/
+			for (int i = 0; i < PathC.size(); i++)			//試著加path進shortlist來改善結果
 				PathC[i]->SetTried(PathC[i]->Is_Chosen());
 			for (int i = 0; i < atoi(argv[6]); i++){		//太多次可能造成加入過多點但解沒差多少 而造成多餘的DCC
 				int AddNodeIndex = RefineResult(year);
 				if (AddNodeIndex < 0)
 					break;
-				PathC[AddNodeIndex]->SetTried(true);
+				PathC[AddNodeIndex]->SetTried(true);			//記錄此點已經試著加過了
 				int dccs = CallSatAndReadReport(0);			
 				if (!dccs){
 					PathC[AddNodeIndex]->SetChoose(false);
@@ -216,20 +214,18 @@ int main(int argc, char* argv[]){
 			GenerateSAT("sat.cnf", year);
 			
 			system("cp sat.cnf backup.cnf");
-			RemoveRDCCs();
+			RemoveRDCCs();									//用來試著從Mine上移除DCC
 			int dccss = CallSatAndReadReport(0);
 			if (dccss == 0 || oridccs < dccss){
 				system("cp backup.cnf sat.cnf");
 			}
 			
-			//如何取捨Quality和DCC ?
-			
 			int dccs = CallSatAndReadReport(0);
 			double upper, lower;
-			CalQuality(year, upper, lower);
-			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){
+			CalQuality(year, upper, lower);					//計算quality
+			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){	//看是否解的區間比原本的好
 				if (monte_s)
-					Monte_CalQuality(year, monteU, monteL);
+					Monte_CalQuality(year, monteU, monteL);	//Monte-Carlo估計
 				for (int i = 0; i < PathC.size(); i++)
 					bestnode[i] = PathC[i]->Is_Chosen();
 				system("cp sat.cnf best.cnf");
@@ -256,7 +252,7 @@ int main(int argc, char* argv[]){
 			t_sol += (double)(clock() - tsolst) / CLOCKS_PER_SEC;
 		}
 		if (bestup>10){
-			cout << "NO SOLUTION!, Input New Try Limit or 0 for Give Up. " << endl;
+			cout << "NO SOLUTION!, Input new try limit or 0 to exit. " << endl;
 			int addt;
 			cin >> addt;
 			if (addt <= 0)
@@ -271,7 +267,7 @@ int main(int argc, char* argv[]){
 		PathC[i]->SetChoose(bestnode[i]);
 	system("cp best.cnf sat.cnf");
 	int dccs = CallSatAndReadReport(0);
-	do{
+	do{												//結束前多試幾次
 		double upper, lower;
 		CalQuality(year, upper, lower);		
 		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){			
@@ -298,13 +294,13 @@ int main(int argc, char* argv[]){
 	for (int i = 1; i <= 4; i++)
 		cout << info[i] << ' ';
 	cout << endl;
-	cout << fr << endl;
+	//cout << fr << endl;
 	cout << "Total Runtime : " << (clock() - tst) / CLOCKS_PER_SEC << endl;
 	cout << "Solution count = " << c_sol << " Time = " << t_sol << endl;
 	cout << "No solution count = " << c_nosol << " Time = " << t_nosol << endl;
 	cout << "Enter the year : " << endl;
 	double y;
 	cin >> y;	
-	PrintStatus(y);	
+	//PrintStatus(y);	
 	return 0;
 }
