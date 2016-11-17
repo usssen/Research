@@ -6,6 +6,8 @@
 #include "circuit.h"
 #include "aging.h"
 #include<signal.h>
+#include<algorithm>
+
 
 /*
 void inthandler(int s){
@@ -68,35 +70,37 @@ bool BInv(double &bu, double &bl, double u1, double l1, double u2, double l2,dou
 	return true;
 }
 
-
 int main(int argc, char* argv[]){
 	if (argc < 7){
 		cout << "./research [circuit] [path report] [regration info] [required life time] [restart times] [refine times] [ERROR limit]" << endl;
 		return 0;
 	}
 	//signal(SIGINT, inthandler);
-	clock_t tst,tsolst;
+	clock_t tst, tsolst;
 	double t_sol = 0, t_nosol = 0;
 	int c_sol = 0, c_nosol = 0;
 	tst = clock();
 	srand(time(NULL));
 	string filename;
-	filename = argv[1];	
+	filename = argv[1];
 	cout << "Reading Circuit...";
 	ReadCircuit(filename);
 	cout << "Finished." << endl;
-	filename = argv[2];	
+	filename = argv[2];
 	Circuit[0].PutClockSource();
 	cout << "Reading Cirtical Paths Information...";
 	ReadPath_l(filename);
-	cout << "finished." << endl;	
+	cout << "finished." << endl;
 	//ReadPath_s(filename);
-	//cout << "Read Shortest Path Finished." << endl;	
+	//cout << "Read Shortest Path Finished." << endl;
+
+	for (int i = 0; i<Circuit[0].GateSize(); i++)
+		Circuit[0].GetGate(i)->SetDcc(DCC_NONE);	
 	int year = atoi(argv[4]);
 	ERROR = year*0.1;
 	if (argc > 7){
 		ERROR = atof(argv[7]);
-	}		
+	}
 	ReadAgingData();
 	AdjustConnect();
 	double PLUS = ERROR;
@@ -111,7 +115,7 @@ int main(int argc, char* argv[]){
 			if (line.find("auto") != string::npos){
 				PLUS = ERROR;
 			}
-			else if (line.find("fixed")!=string::npos){
+			else if (line.find("fixed") != string::npos){
 				double f = atof(line.c_str() + 10);
 				PLUS = f - year;
 			}
@@ -136,7 +140,7 @@ int main(int argc, char* argv[]){
 	else
 		cout << "CLOSE" << endl;
 	CheckPathAttackbility(year, tight, true, PLUS);
-	
+
 	if (PathC.size() <= 0){
 		cout << "No Path Can Attack!" << endl;
 		return 0;
@@ -148,24 +152,24 @@ int main(int argc, char* argv[]){
 
 	int ss = PathC.size();
 	EdgeA = new double*[ss];		// y = ax+b
-	EdgeB = new double*[ss];		
+	EdgeB = new double*[ss];
 	cor = new double*[ss];			//相關係數	
 	ser = new double*[ss];			//標準誤
 
 	for (int i = 0; i < ss; i++){
 		EdgeA[i] = new double[ss];
 		EdgeB[i] = new double[ss];
-		cor[i] = new double[ss];		
+		cor[i] = new double[ss];
 		ser[i] = new double[ss];
 	}
-	filename = argv[3];	
+	filename = argv[3];
 	cout << "Reading CPInfo...";
 	ReadCpInfo(filename);
-	cout << "finisned." << endl;		
-	CheckOriLifeTime();		
-	
+	cout << "finisned." << endl;
+	CheckOriLifeTime();
+
 	//PrintStatus(year);
-	
+
 	bool* bestnode = new bool[PathC.size()];
 	double bestup = 100, bestlow = -100;
 	double monteU, monteL;
@@ -173,12 +177,12 @@ int main(int argc, char* argv[]){
 	string s;
 	fstream fileres;
 	//int fr = 999999;
-	int trylimit = atoi(argv[5]),tryi = 0;
+	int trylimit = atoi(argv[5]), tryi = 0;
 	do{
 		for (; tryi < trylimit; tryi++){
 			tsolst = clock();
 			cout << "Round : " << tryi << endl;
-			if (!ChooseVertexWithGreedyMDS(year, false)){	
+			if (!ChooseVertexWithGreedyMDS(year, false)){
 				cout << "Not Domination Set!" << endl;
 				ChooseVertexWithGreedyMDS(year, true);	//找shortlist的function, 回傳值false時表沒有domination set
 				continue;
@@ -195,7 +199,7 @@ int main(int argc, char* argv[]){
 			}
 			/*
 			if (fr > tryi)
-				fr = tryi;	
+			fr = tryi;
 			*/
 			for (int i = 0; i < PathC.size(); i++)			//試著加path進shortlist來改善結果
 				PathC[i]->SetTried(PathC[i]->Is_Chosen());
@@ -204,26 +208,26 @@ int main(int argc, char* argv[]){
 				if (AddNodeIndex < 0)
 					break;
 				PathC[AddNodeIndex]->SetTried(true);			//記錄此點已經試著加過了
-				int dccs = CallSatAndReadReport(0);			
+				int dccs = CallSatAndReadReport(0);
 				if (!dccs){
 					PathC[AddNodeIndex]->SetChoose(false);
 					continue;
-				}						
+				}
 				oridccs = dccs;
 			}
 			GenerateSAT("sat.cnf", year);
-			
+
 			system("cp sat.cnf backup.cnf");
 			RemoveRDCCs();									//用來試著從Mine上移除DCC
 			int dccss = CallSatAndReadReport(0);
 			if (dccss == 0 || oridccs < dccss){
 				system("cp backup.cnf sat.cnf");
 			}
-			
+
 			int dccs = CallSatAndReadReport(0);
 			double upper, lower;
 			CalQuality(year, upper, lower);					//計算quality
-			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){	//看是否解的區間比原本的好
+			if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year, bestdcc, bestdcc, dccs)){	//看是否解的區間比原本的好
 				if (monte_s)
 					Monte_CalQuality(year, monteU, monteL);	//Monte-Carlo估計
 				for (int i = 0; i < PathC.size(); i++)
@@ -232,7 +236,7 @@ int main(int argc, char* argv[]){
 			}
 			cout << "Q = " << upper << " ~ " << lower << endl;
 			cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
-			for (int i = 0; i<atoi(argv[6]); i++){				
+			for (int i = 0; i < atoi(argv[6]); i++){
 				if (!AnotherSol())
 					break;
 				dccs = CallSatAndReadReport(0);
@@ -251,7 +255,7 @@ int main(int argc, char* argv[]){
 			c_sol++;
 			t_sol += (double)(clock() - tsolst) / CLOCKS_PER_SEC;
 		}
-		if (bestup>10){
+		if (bestup > 10){
 			cout << "NO SOLUTION!, Input new try limit or 0 to exit. " << endl;
 			int addt;
 			cin >> addt;
@@ -260,7 +264,6 @@ int main(int argc, char* argv[]){
 			trylimit += addt;
 		}
 	} while (bestup > 10);
-
 	bestup = 100, bestlow = -100, bestdcc = 10000;
 	cout << "Final Refinement" << endl;
 	for (int i = 0; i < PathC.size(); i++)
@@ -269,8 +272,8 @@ int main(int argc, char* argv[]){
 	int dccs = CallSatAndReadReport(0);
 	do{												//結束前多試幾次
 		double upper, lower;
-		CalQuality(year, upper, lower);		
-		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year,bestdcc,bestdcc,dccs)){			
+		CalQuality(year, upper, lower);
+		if (BInv(bestup, bestlow, bestup, bestlow, upper, lower, year, bestdcc, bestdcc, dccs)){
 			if (monte_s)
 				Monte_CalQuality(year, monteU, monteL);
 			system("cp sat.cnf best.cnf");
@@ -281,26 +284,59 @@ int main(int argc, char* argv[]){
 			break;
 		dccs = CallSatAndReadReport(0);
 		if (!dccs)
-			break;		
+			break;
 	} while (FINAL--);
 	cout << endl << endl << "Final Result : " << endl;
 	CallSatAndReadReport(1);
 	RefineResult(year);
 	cout << "BEST Q = " << bestup << " ~ " << bestlow << endl;
+	//rec << bestup << " " << bestlow << ' ';
 	if (monte_s){
 		cout << "BEST Q(Monte) = " << monteU << " ~ " << monteL << endl;
 	}
 	cout << "Clock Period = " << info[0] << endl;
-	for (int i = 1; i <= 4; i++)
+	//rec << info[0] << ' ';
+	for (int i = 1; i <= 4; i++){
 		cout << info[i] << ' ';
+		//rec << info[i] << ' ';
+	}
 	cout << endl;
 	//cout << fr << endl;
 	cout << "Total Runtime : " << (clock() - tst) / CLOCKS_PER_SEC << endl;
 	cout << "Solution count = " << c_sol << " Time = " << t_sol << endl;
 	cout << "No solution count = " << c_nosol << " Time = " << t_nosol << endl;
+	//fstream rec;
+	//rec.open("rec2.txt", ios::out);
+	//rec << bestup << ' ' << bestlow << endl;
+	//double sumu, suml;
+	vector<double> lff;
+	lff.clear();
+	for (int i = 0; i < 100000; i++){
+		AdjustProcessVar();		
+		//double upp, loww;
+		//CalQuality(year, upp, loww);
+		//for (int j = 0; j < 1000; j++){
+			lff.push_back(Monte_CalQualityS(year));
+		//}		
+		//sumu += upp;
+		//suml += loww;
+		//rec << upp << " " << loww << endl;
+	}
+	sort(lff.begin(), lff.end());
+	int front = 0, back = lff.size() - 1;
+	double upp = lff[front], loww = lff[back];
+	while (front + lff.size() - 1 - back <= lff.size() / 20){
+		if (absf(lff[front] - (double)year) > absf(lff[back] - (double)year))
+			upp = lff[++front];
+		else
+			loww = lff[--back];
+	}
+	//rec << sumu / 100 << ' ' << suml / 100 << endl;
+	//rec.close();
+	cout << upp << ' ' << loww << endl;
 	cout << "Enter the year : " << endl;
 	double y;
-	cin >> y;	
+	cin >> y;
 	//PrintStatus(y);	
 	return 0;
 }

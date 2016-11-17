@@ -19,6 +19,7 @@ int CallSatAndReadReport(int flag);
 void CheckPathAttackbility(double year,double margin,bool flag,double PLUS);
 double CalQuality(double year,double &upper,double &lower);
 double Monte_CalQuality(double year, double &upper, double &lower);
+double Monte_CalQualityS(double year);
 void RemoveRDCCs();
 int RefineResult(double year);
 void EstimateTimeEV(double year);
@@ -28,6 +29,7 @@ void PrintStatus(double year);
 void AdjustConnect();
 bool AnotherSol();
 void CheckOriLifeTime();
+void AdjustProcessVar();
 
 class GATE;
 
@@ -131,6 +133,7 @@ public:
 		if (nametogate.find(name) == nametogate.end())	return NULL;
 		return nametogate[name];
 	}
+	unsigned GateSize(){ return gate_list.size(); }
 	GATE* GetGate(int i){ return gate_list[i]; }
 	void PutClockSource();
 };
@@ -160,11 +163,14 @@ private:
 	bool tried;					//用於在refine時用過與否
 	unsigned no;	
 	PATHTYPE type;
+	double processvar[100];		//製程變異參數
 public:
 	PATH():attackable(false),choose(false){
 		setuptime = holdtime = -1;
 		gate_list.clear();
 		timing.clear();
+		for (int i = 0; i < 100; i++)
+			processvar[i] = 1.0;
 	}
 	~PATH(){}
 	void AddGate(GATE* g, double i,double o){
@@ -196,6 +202,13 @@ public:
 	double GetCTE(){ return clock_to_end; }
 	double GetCTH(){ return timing[0].in_time(); }	//clock到首端flip-flop的時間
 	double GetAT(){ return timing[timing.size()-1].in_time(); }		//arrival time
+	double GetPathDelay() {
+		double d = this->In_time(1) - this->Out_time(0);
+		for (int i = 1; i < this->length() - 1; i++)
+			d += (this->In_time(i + 1) - this->In_time(i))*processvar[i];
+		return d;
+		//return processvar[1]*(this->In_time(this->length() - 1) - this->Out_time(0));
+	}
 	void SetType(PATHTYPE t){ type = t; }	//short or long path
 	PATHTYPE GetType(){ return type; }
 	int length(){ return gate_list.size(); }	//path的長度 不含clock
@@ -211,6 +224,8 @@ public:
 	bool IsSafe(){ return safe; }				//是否怎麼放lifetime都>n+error
 	void SetTried(bool t){ tried = t; }
 	bool IsTried() { return tried; }			//記錄是否已被試著加入shortlist(refinement加點時在用的)
+	void SetProVar(int i, double a){ processvar[i] = a; }
+	double GetProVar(int i){ return processvar[i]; }
 };
 
 

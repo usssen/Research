@@ -36,8 +36,8 @@ double TransStringToDouble(string s){
 string RemoveSpace(string s){
 	unsigned i;
 	for (i = 0; i < s.length(); i++)
-		if (s[i] != ' ' && s[i] != 9 && s[i] != 13)		//9¬°¤ô¥­tab,13¬°´«¦æ
-			break;
+	if (s[i] != ' ' && s[i] != 9 && s[i] != 13)		//9¬°¤ô¥­tab,13¬°´«¦æ
+		break;
 	s = s.substr(i);
 	return s;
 }
@@ -51,12 +51,12 @@ void CIRCUIT::PutClockSource(){
 
 void ReadCircuit(string filename){		//Åªnetlist
 	fstream file;
-	file.open(filename.c_str(),ios::in);
+	file.open(filename.c_str(), ios::in);
 	char temp[1000];
 	bool cmt = false;
 	int Nowmodule = -1;
 	while (file.getline(temp, 1000)){		//¤@¦æ¦h­Ó©R¥OµLªk³B²z
-		string temps = temp;		
+		string temps = temp;
 		if (cmt){
 			if (temps.find("*/") != string::npos)
 				cmt = false;
@@ -65,18 +65,18 @@ void ReadCircuit(string filename){		//Åªnetlist
 		if (temps.find("/*") != string::npos){
 			if (temps.find("*/") == string::npos)
 				cmt = true;
-			temps = temps.substr(0,temps.find("/*"));
+			temps = temps.substr(0, temps.find("/*"));
 		}
 		if (temps.find("//") != string::npos)
 			temps = temps.substr(0, temps.find("//"));
 		temps = RemoveSpace(temps);
 		if (temps.empty())
-			continue;		
-		if (temps.find("endmodule") != string::npos)	
 			continue;
-		else if (temps.find("assign")!=string::npos)
+		if (temps.find("endmodule") != string::npos)
 			continue;
-		else if (temps.find("module")!=string::npos){
+		else if (temps.find("assign") != string::npos)
+			continue;
+		else if (temps.find("module") != string::npos){
 			int st = temps.find("module") + 7;
 			CIRCUIT TC(temps.substr(st, temps.find(" (") - st));
 			Circuit.push_back(TC);
@@ -86,10 +86,10 @@ void ReadCircuit(string filename){		//Åªnetlist
 				if (temps.find(")") != string::npos)
 					break;
 			}
-		}		
-		else if (temps.find("input")!=string::npos){
+		}
+		else if (temps.find("input") != string::npos){
 			int st = temps.find("input") + 6;
-			WIRE* w = new WIRE(temps.substr(st,temps.find(";") - st),PI);
+			WIRE* w = new WIRE(temps.substr(st, temps.find(";") - st), PI);
 			Circuit[Nowmodule].PutWire(w);
 		}
 		else if (temps.find("output") != string::npos){
@@ -98,7 +98,7 @@ void ReadCircuit(string filename){		//Åªnetlist
 			Circuit[Nowmodule].PutWire(w);
 
 		}
-		else if (temps.find("wire") != string::npos){			
+		else if (temps.find("wire") != string::npos){
 			int st = temps.find("wire") + 5;
 			WIRE* w = new WIRE(temps.substr(st, temps.find(";") - st), INN);
 			Circuit[Nowmodule].PutWire(w);
@@ -119,13 +119,13 @@ void ReadCircuit(string filename){		//Åªnetlist
 				temps = temps.substr(temps.find(" ") + 1);
 				string gateN = temps.substr(0, temps.find(" ("));
 				temps = temps.substr(temps.find(" ") + 2);
-				GATE* g = new GATE(gateN,moduleN);
+				GATE* g = new GATE(gateN, moduleN);
 				int st = temps.find("(");
 				string ioN = temps.substr(st + 1, temps.find(")") - st - 1);
 				g->SetOutput(Circuit[Nowmodule].GetWire(ioN));
 				Circuit[Nowmodule].GetWire(ioN)->SetInput(g);
 				temps = temps.substr(temps.find(")") + 1);
-				while (file.getline(temp,1000)){		//gate's input ·|¦b«á­±¨C¦æ¼g¤@­Ó
+				while (file.getline(temp, 1000)){		//gate's input ·|¦b«á­±¨C¦æ¼g¤@­Ó
 					temps = temp;
 					st = temps.find("(");
 					string ioN = temps.substr(st + 1, temps.find(")") - st - 1);		//·|¦³½u±µ¨ì1'b1,1'b0(±`¼Æ)
@@ -137,17 +137,17 @@ void ReadCircuit(string filename){		//Åªnetlist
 				Circuit[Nowmodule].PutGate(g);
 			}
 		}
-		
+
 		//system("pause");
-	}	
+	}
 	file.close();
 	return;
 }
 
 void ReadPath_l(string filename){	//Åªpath report
 	fstream file;
-	file.open(filename.c_str(), ios::in);	
-	string line,sp,ep;
+	file.open(filename.c_str(), ios::in);
+	string line, sp, ep;
 	GATE *gptr = NULL, *spptr = NULL, *epptr = NULL;
 	PATH* p = NULL;
 	unsigned Path_No = 0;
@@ -161,15 +161,15 @@ void ReadPath_l(string filename){	//Åªpath report
 			sp = sp.substr(0, sp.find(" "));
 			spptr = Circuit[0].GetGate(sp);	//0¬°top-module
 			if (spptr == NULL)	//°_ÂI¬°PI
-				spptr = new GATE(sp,"PI");
+				spptr = new GATE(sp, "PI");
 		}
 		else if (line.find("Endpoint") != string::npos){
 			ep = line.substr(line.find("Endpoint") + 10);
 			ep = ep.substr(0, ep.find(" "));
 			epptr = Circuit[0].GetGate(ep);
 			if (epptr == NULL)
-				epptr = new GATE(ep, "PO");			
-		}		
+				epptr = new GATE(ep, "PO");
+		}
 
 		if (line.find("---") == string::npos || sp == "")	continue;
 		if (spptr->GetType() == "PI" && epptr->GetType() == "PO"){
@@ -186,127 +186,6 @@ void ReadPath_l(string filename){	//Åªpath report
 				if (sp == line.substr(0, line.find("/")))	break;
 				if (line.find("(net)") != string::npos)	continue;
 				else if (line.find("(in)") != string::npos){	//PI®É¶¡¤£­p,¦pªG¦³¥~³¡©µ¿ð«á­±¤ÀªR¦A¥[¤J
-					spptr->SetClockPath(Circuit[0].GetGate("ClockSource"));										
-				}
-				//else if (line.find("(out)") != string::npos){}
-				else{
-					string name = line.substr(0, line.find("/"));
-					double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-					getline(file, line);
-					double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-					gptr = Circuit[0].GetGate(name);
-					spptr->SetClockPath(gptr);
-					gptr->SetInTime(intime);
-					gptr->SetOutTime(outtime);
-				}
-			}
-		}		
-		if (spptr->GetType() == "PI"){		//°_ÂI¬°PIªºª¬ªp
-			while (line.find("(in)") == string::npos)	getline(file, line);
-			p->AddGate(spptr, 0, TransStringToDouble(line.substr(line.find("&") + 1)));		//clock ¨ì °_ÂIªº®É¶¡¬°0 (PI),tcq = ¥~³¡delay
-			getline(file, line);
-		}
-		do{
-			line = RemoveSpace(line);
-			if (ep == line.substr(0, line.find("/")) || line.find("(out)")!=string::npos)	break;
-			if (line.find("(net)") != string::npos)	continue;
-			string name = line.substr(0, line.find("/"));
-			double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-			getline(file, line);
-			double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-			gptr = Circuit[0].GetGate(name);
-			p->AddGate(gptr, intime, outtime);			
-		} while (getline(file, line));
-
-		p->AddGate(epptr, TransStringToDouble(line.substr(line.find("&") + 1)), -1);	//arrival time
-
-		getline(file, line);
-		while (line.find("edge)") == string::npos)	getline(file, line);	//§äclock [clock source] (rise/fall edge)
-		if (period < 1)
-			period = TransStringToDouble(line.substr(line.find("edge)") + 5));		
-
-		//¦blong path¤¤ ²×ÂIªº®É¶¡³£¬O¥[¤J¤F¤@­Óperiodªºª¬ªp ­n´î¥h ¦]¬°«á­±·|§ï¥Î§OªºTc'
-		if (epptr->GetType() == "PO"){
-			while (line.find("output external delay") == string::npos)	getline(file, line);
-			double delay = TransStringToDouble(line.substr(line.find("-") + 1));
-			p->SetCTE(0.0);	
-			p->SetST(delay);	//POªºsetup time¬°¥~³¡delay
-		}
-		else{
-			while (line.find("clock source latency") == string::npos) getline(file, line);
-			//if (epptr->ClockLength() == 0){
-				while (getline(file, line)){
-					line = RemoveSpace(line);
-					if (ep == line.substr(0, line.find("/"))){
-						double cte = TransStringToDouble(line.substr(line.find("&") + 1));
-						p->SetCTE(cte - period);		//³oÃä¤´¬O¦³+1­Óperiod
-						break;
-					}
-					if (line.find("(net)") != string::npos)	continue;
-					else if (line.find("(in)") != string::npos){
-						epptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
-					}
-					else{
-						string name = line.substr(0, line.find("/"));
-						double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-						getline(file, line);
-						double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-						gptr = Circuit[0].GetGate(name);
-						epptr->SetClockPath(gptr);
-						gptr->SetInTime(intime - period);		//ÀÉ®×¤¤¬°source -> ffªº®É¶¡ + 1­Óperiod »Ý®ø¥h
-						gptr->SetOutTime(outtime - period);
-					}
-				}
-			//}
-			while (line.find("setup") == string::npos)	getline(file, line);
-			double setup = TransStringToDouble(line.substr(line.find("-") + 1));			
-			p->SetST(setup);
-		}
-		spptr->Setflag();
-		epptr->Setflag();
-		p->SetType(LONG);
-		p->SetNo(Path_No++);
-		if (p->length()>2)		//¤¤¶¡¦³gate ¤£¬Oª½±µ³s
-			PathR.push_back(*p);
-		sp = "";		
-	}	
-	file.close();
-}
-/*
-void ReadPath_s(string filename){
-	fstream file;
-	file.open(filename.c_str(), ios::in);
-	string line, sp, ep;
-	GATE *gptr = NULL, *spptr = NULL, *epptr = NULL;
-	PATH* p = NULL;	
-	while (getline(file, line)){
-		if (line.find("Startpoint") != string::npos){
-			if (PathR.size() >= 2*MAXPATHS)
-				return;
-			p = new PATH();
-			sp = line.substr(line.find("Startpoint") + 12);
-			sp = sp.substr(0, sp.find(" "));
-			spptr = Circuit[0].GetGate(sp);	//0¬°top-module
-			if (spptr == NULL)	//°_ÂI¬°PI
-				spptr = new GATE(sp, "PI");
-		}
-		else if (line.find("Endpoint") != string::npos){	//¤£·|¦³output¬°PO(¨S¦³holdtime°ÝÃD)
-			ep = line.substr(line.find("Endpoint") + 10);
-			ep = ep.substr(0, sp.find(" "));
-			epptr = Circuit[0].GetGate(ep);
-			if (epptr == NULL)
-				epptr = new GATE(ep, "PO");			
-		}
-
-		if (line.find("---") == string::npos || sp == "")	continue;
-		getline(file, line);
-		getline(file, line);	
-		if (spptr->GetType() != "PI"){			
-			while (getline(file, line)){	//clock-source -> startpoint			
-				line = RemoveSpace(line);
-				if (sp == line.substr(0, line.find("/")))	break;
-				if (line.find("(net)") != string::npos)	continue;
-				else if (line.find("(in)") != string::npos){	//clock source®É¶¡¤£­p,¦pªG¦³¥~³¡©µ¿ð«á­±¤ÀªR¦A¥[¤J
 					spptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
 				}
 				//else if (line.find("(out)") != string::npos){}
@@ -323,11 +202,11 @@ void ReadPath_s(string filename){
 			}
 		}
 		if (spptr->GetType() == "PI"){		//°_ÂI¬°PIªºª¬ªp
-			while (line.find("(in)") == string::npos)	getline(file, line);		
-			p->AddGate(spptr, 0, TransStringToDouble(line.substr(line.find("&") + 1)));		
+			while (line.find("(in)") == string::npos)	getline(file, line);
+			p->AddGate(spptr, 0, TransStringToDouble(line.substr(line.find("&") + 1)));		//clock ¨ì °_ÂIªº®É¶¡¬°0 (PI),tcq = ¥~³¡delay
 			getline(file, line);
 		}
-		do{			
+		do{
 			line = RemoveSpace(line);
 			if (ep == line.substr(0, line.find("/")) || line.find("(out)") != string::npos)	break;
 			if (line.find("(net)") != string::npos)	continue;
@@ -336,25 +215,31 @@ void ReadPath_s(string filename){
 			getline(file, line);
 			double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
 			gptr = Circuit[0].GetGate(name);
-			p->AddGate(gptr, intime, outtime);			
+			p->AddGate(gptr, intime, outtime);
 		} while (getline(file, line));
 
 		p->AddGate(epptr, TransStringToDouble(line.substr(line.find("&") + 1)), -1);	//arrival time
 
+		getline(file, line);
+		while (line.find("edge)") == string::npos)	getline(file, line);	//§äclock [clock source] (rise/fall edge)
+		if (period < 1)
+			period = TransStringToDouble(line.substr(line.find("edge)") + 5));
 
-		if (epptr->GetType() == "PO"){	//short³¡¥÷À³¤£·|¦³output¬°PO
+		//¦blong path¤¤ ²×ÂIªº®É¶¡³£¬O¥[¤J¤F¤@­Óperiodªºª¬ªp ­n´î¥h ¦]¬°«á­±·|§ï¥Î§OªºTc'
+		if (epptr->GetType() == "PO"){
 			while (line.find("output external delay") == string::npos)	getline(file, line);
 			double delay = TransStringToDouble(line.substr(line.find("-") + 1));
 			p->SetCTE(0.0);
-			p->SetHT(delay);
+			p->SetST(delay);	//POªºsetup time¬°¥~³¡delay
 		}
 		else{
-			while (line.find("clock source latency") == string::npos) getline(file, line);			
+			while (line.find("clock source latency") == string::npos) getline(file, line);
+			//if (epptr->ClockLength() == 0){
 			while (getline(file, line)){
 				line = RemoveSpace(line);
 				if (ep == line.substr(0, line.find("/"))){
 					double cte = TransStringToDouble(line.substr(line.find("&") + 1));
-					p->SetCTE(cte);
+					p->SetCTE(cte - period);		//³oÃä¤´¬O¦³+1­Óperiod
 					break;
 				}
 				if (line.find("(net)") != string::npos)	continue;
@@ -368,22 +253,133 @@ void ReadPath_s(string filename){
 					double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
 					gptr = Circuit[0].GetGate(name);
 					epptr->SetClockPath(gptr);
-					gptr->SetInTime(intime);
-					gptr->SetOutTime(outtime);
+					gptr->SetInTime(intime - period);		//ÀÉ®×¤¤¬°source -> ffªº®É¶¡ + 1­Óperiod »Ý®ø¥h
+					gptr->SetOutTime(outtime - period);
 				}
-			}			
-			while (line.find("hold") == string::npos)	getline(file, line);
-			double hold = TransStringToDouble(line.substr(line.find("time") + 5));
-			p->SetHT(hold);
+			}
+			//}
+			while (line.find("setup") == string::npos)	getline(file, line);
+			double setup = TransStringToDouble(line.substr(line.find("-") + 1));
+			p->SetST(setup);
 		}
 		spptr->Setflag();
 		epptr->Setflag();
-		p->SetType(SHORT);
-		p->CalWeight();
-		PathR.push_back(*p);
-		sp = "";	
-	}	
+		p->SetType(LONG);
+		p->SetNo(Path_No++);
+		if (p->length()>2)		//¤¤¶¡¦³gate ¤£¬Oª½±µ³s
+			PathR.push_back(*p);
+		sp = "";
+	}
 	file.close();
+}
+/*
+void ReadPath_s(string filename){
+fstream file;
+file.open(filename.c_str(), ios::in);
+string line, sp, ep;
+GATE *gptr = NULL, *spptr = NULL, *epptr = NULL;
+PATH* p = NULL;
+while (getline(file, line)){
+if (line.find("Startpoint") != string::npos){
+if (PathR.size() >= 2*MAXPATHS)
+return;
+p = new PATH();
+sp = line.substr(line.find("Startpoint") + 12);
+sp = sp.substr(0, sp.find(" "));
+spptr = Circuit[0].GetGate(sp);	//0¬°top-module
+if (spptr == NULL)	//°_ÂI¬°PI
+spptr = new GATE(sp, "PI");
+}
+else if (line.find("Endpoint") != string::npos){	//¤£·|¦³output¬°PO(¨S¦³holdtime°ÝÃD)
+ep = line.substr(line.find("Endpoint") + 10);
+ep = ep.substr(0, sp.find(" "));
+epptr = Circuit[0].GetGate(ep);
+if (epptr == NULL)
+epptr = new GATE(ep, "PO");
+}
+if (line.find("---") == string::npos || sp == "")	continue;
+getline(file, line);
+getline(file, line);
+if (spptr->GetType() != "PI"){
+while (getline(file, line)){	//clock-source -> startpoint
+line = RemoveSpace(line);
+if (sp == line.substr(0, line.find("/")))	break;
+if (line.find("(net)") != string::npos)	continue;
+else if (line.find("(in)") != string::npos){	//clock source®É¶¡¤£­p,¦pªG¦³¥~³¡©µ¿ð«á­±¤ÀªR¦A¥[¤J
+spptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
+}
+//else if (line.find("(out)") != string::npos){}
+else{
+string name = line.substr(0, line.find("/"));
+double intime = TransStringToDouble(line.substr(line.find("&") + 1));
+getline(file, line);
+double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
+gptr = Circuit[0].GetGate(name);
+spptr->SetClockPath(gptr);
+gptr->SetInTime(intime);
+gptr->SetOutTime(outtime);
+}
+}
+}
+if (spptr->GetType() == "PI"){		//°_ÂI¬°PIªºª¬ªp
+while (line.find("(in)") == string::npos)	getline(file, line);
+p->AddGate(spptr, 0, TransStringToDouble(line.substr(line.find("&") + 1)));
+getline(file, line);
+}
+do{
+line = RemoveSpace(line);
+if (ep == line.substr(0, line.find("/")) || line.find("(out)") != string::npos)	break;
+if (line.find("(net)") != string::npos)	continue;
+string name = line.substr(0, line.find("/"));
+double intime = TransStringToDouble(line.substr(line.find("&") + 1));
+getline(file, line);
+double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
+gptr = Circuit[0].GetGate(name);
+p->AddGate(gptr, intime, outtime);
+} while (getline(file, line));
+p->AddGate(epptr, TransStringToDouble(line.substr(line.find("&") + 1)), -1);	//arrival time
+if (epptr->GetType() == "PO"){	//short³¡¥÷À³¤£·|¦³output¬°PO
+while (line.find("output external delay") == string::npos)	getline(file, line);
+double delay = TransStringToDouble(line.substr(line.find("-") + 1));
+p->SetCTE(0.0);
+p->SetHT(delay);
+}
+else{
+while (line.find("clock source latency") == string::npos) getline(file, line);
+while (getline(file, line)){
+line = RemoveSpace(line);
+if (ep == line.substr(0, line.find("/"))){
+double cte = TransStringToDouble(line.substr(line.find("&") + 1));
+p->SetCTE(cte);
+break;
+}
+if (line.find("(net)") != string::npos)	continue;
+else if (line.find("(in)") != string::npos){
+epptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
+}
+else{
+string name = line.substr(0, line.find("/"));
+double intime = TransStringToDouble(line.substr(line.find("&") + 1));
+getline(file, line);
+double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
+gptr = Circuit[0].GetGate(name);
+epptr->SetClockPath(gptr);
+gptr->SetInTime(intime);
+gptr->SetOutTime(outtime);
+}
+}
+while (line.find("hold") == string::npos)	getline(file, line);
+double hold = TransStringToDouble(line.substr(line.find("time") + 5));
+p->SetHT(hold);
+}
+spptr->Setflag();
+epptr->Setflag();
+p->SetType(SHORT);
+p->CalWeight();
+PathR.push_back(*p);
+sp = "";
+}
+file.close();
 }
 */
 
@@ -412,14 +408,14 @@ void ReadCpInfo(string filename){		//ÅªÃöÁp©Ê©M°jÂk½u
 			file >> b;
 			file >> line;
 			if (line == "nan")			//y = b => ±×²v¬°0 =>y¤§¼Ð·Ç®t¬°0 =>¬ÛÃö«Y¼ÆµL½a¤j
-				cc = 0;				
+				cc = 0;
 			else
 				cc = atof(line.c_str());
 			file >> err;
 		}
 		if (mapping.find(im) == mapping.end() || mapping.find(jn) == mapping.end())
 			continue;
-		int ii = mapping[im],jj = mapping[jn];
+		int ii = mapping[im], jj = mapping[jn];
 		EdgeA[ii][jj] = a;
 		EdgeB[ii][jj] = b;
 		cor[ii][jj] = cc;
@@ -428,11 +424,11 @@ void ReadCpInfo(string filename){		//ÅªÃöÁp©Ê©M°jÂk½u
 	file.close();
 }
 
-void CalPreInv(double x, double &upper, double &lower, int a, int b,double year){		//­pºâ¹w´ú°Ï¶¡,y = ax+b ¬O¥Î>100%(¥[¤W­ì¥»ªº­È)¥hºâ
+void CalPreInv(double x, double &upper, double &lower, int a, int b, double year){		//­pºâ¹w´ú°Ï¶¡,y = ax+b ¬O¥Î>100%(¥[¤W­ì¥»ªº­È)¥hºâ
 	if (EdgeA[a][b] > 9999){
 		upper = lower = 10000;
 		return;
-	}	
+	}
 	double dis = 1.96;	//+-¦h¤Ö­Ó¼Ð·Ç®t 90% 1.65 95% 1.96 99% 2.58
 	double y1 = EdgeA[a][b] * (x + 1) + EdgeB[a][b] * ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10)));
 	upper = y1 + ser[a][b] * dis* ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10))) - 1;
@@ -445,16 +441,16 @@ double CalPreAging(double x, int a, int b, double year){		//­pºâ¹w´ú­È
 	return EdgeA[a][b] * (x + 1) + EdgeB[a][b] * ((1 + AgingRate(WORST, year)) / (1 + AgingRate(WORST, 10))) - 1;		//«ö·Ó¤ñ¨Ò½Õ¾ã
 }
 //­pºâtiming, ¦pªG¨S¦³¹H¤Ï¬°true, ¿é¤J¬Opath«ü¼Ð, dcc©ñ¦b°_/²×ÂIªº²Ä´X­Óclock buffer, ©ñªº«¬ºA, ®É¶¡
-bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, double year){		
+bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, double year){
 	GATE* stptr = pptr->Gate(0);
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
 	double clks = 0.0;
-	if (stptr->GetType() != "PI"){		
+	if (stptr->GetType() != "PI"){
 		clks = pptr->GetCTH();	//¦Ñ¤Æ«á = ­ì¥» + ¨C­Ógate delay x ¦Ñ¤Æ²v **³oÂI­n­×¥¿ wire¤]¥²»Ý­pºâ¦Ñ¤Æ
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < stptr->ClockLength(); i++)
-			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < stn; i++)
 			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = stn; i < stptr->ClockLength(); i++)
@@ -476,8 +472,8 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < edptr->ClockLength(); i++)
-			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
+		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < edn; i++)
 			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = edn; i < edptr->ClockLength(); i++)
@@ -497,7 +493,7 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 	double Tcq = (pptr->Out_time(0) - pptr->In_time(0));
 	if (stptr->GetType() != "PI")
 		Tcq *= (AgingRate(FF, year) + 1.0);
-	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
+	double DelayP = pptr->GetPathDelay();
 	//for (int i = 1; i < pptr->length() - 1; i++)		//«e«áªºff/PO/PI¤£¥Îºâ
 	//	DelayP += (pptr->Out_time(i) - pptr->In_time(i))*AgingRate(NORMAL,year);
 	DelayP += DelayP*AgingRate(NORMAL, year);
@@ -524,12 +520,12 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		clks = pptr->GetCTH();
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < stptr->ClockLength(); i++)
-			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		AGINGTYPE DCC_insert = DCC_NONE;
 		int i;
 		for (i = 0; i < ls && stptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++){
-			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);			
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		}
 		if (i < ls)
 			DCC_insert = stptr->GetClockPath(i)->GetDcc();
@@ -554,8 +550,8 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 		clkt = pptr->GetCTE();
 		double smallest = edptr->GetClockPath(1)->GetOutTime() - edptr->GetClockPath(1)->GetInTime();	//¤£§tclock-source
 		for (int i = 2; i < edptr->ClockLength(); i++)
-			if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
-				smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
+		if (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime() < smallest)
+			smallest = edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime();
 		int i;
 		AGINGTYPE DCC_insert = DCC_NONE;
 		for (i = 0; i < le && edptr->GetClockPath(i)->GetDcc() == DCC_NONE; i++)
@@ -576,10 +572,10 @@ bool Vio_Check(PATH* pptr, double year, double Aging_P){
 			break;
 		}
 	}
-	double Tcq = (pptr->Out_time(0) - pptr->In_time(0));		
+	double Tcq = (pptr->Out_time(0) - pptr->In_time(0));
 	if (stptr->GetType() != "PI")
 		Tcq *= (AgingRate(FF, year) + 1.0);
-	double DelayP = pptr->In_time(pptr->length() - 1) - pptr->Out_time(0);
+	double DelayP = pptr->GetPathDelay();
 	DelayP += DelayP*Aging_P;
 	if (pptr->GetType() == LONG){
 		if (clks + Tcq + DelayP < clkt - pptr->GetST() + period)
@@ -612,20 +608,20 @@ void AdjustConnect(){	//Åª¥H¤W¨â­Ó­È
 		}
 		if (line.find("edge error") != string::npos){
 			errlimit = atof(line.c_str() + 10);
-		}		
+		}
 	}
-	ff.close();	
+	ff.close();
 }
 
-bool Check_Connect(int a, int b,double year){	
-	if (EdgeA[a][b] > 9999 ||EdgeA[a][b]*EdgeA[a][b] < 0.000001)
+bool Check_Connect(int a, int b, double year){
+	if (EdgeA[a][b] > 9999 || EdgeA[a][b] * EdgeA[a][b] < 0.000001)
 		return false;
 	if (cor[a][b]<0)	//­t¬ÛÃö
 		return false;
-	if ((cor[a][b]*cor[a][b])<thershold)		//¬ÛÃö«Y¼Æ­n¶W¹Lthershold¤~µø¬°¦³Ãä
+	if ((cor[a][b] * cor[a][b])<thershold)		//¬ÛÃö«Y¼Æ­n¶W¹Lthershold¤~µø¬°¦³Ãä
 		return false;
 	if (absl(CalPreAging(AgingRate(WORST, year), a, b, year) - AgingRate(WORST, year))>errlimit)
-		return false;	
+		return false;
 	return true;
 }
 
@@ -647,11 +643,11 @@ private:
 	bool** choose;
 	unsigned size;
 public:
-	HASHTABLE(unsigned s1,unsigned s2){	//s1¬O¦ì¤¸¼Æ
+	HASHTABLE(unsigned s1, unsigned s2){	//s1¬O¦ì¤¸¼Æ
 		size = s1;
 		exist = new bool[1 << s1];
 		choose = new bool*[1 << s1];
-		for (int i = 0; i < (1<<s1); i++){
+		for (int i = 0; i < (1 << s1); i++){
 			exist[i] = false;
 			choose[i] = new bool[s2];
 		}
@@ -663,16 +659,16 @@ public:
 			temp <<= 1;
 			if (PathC[i]->Is_Chosen())
 				temp++;
-			if ((i+1)%size == 0){
+			if ((i + 1) % size == 0){
 				key ^= temp;
 				temp = 0x0;
-			}			
+			}
 		}
 		key ^= temp;
 		return key;
 	}
 	bool Exist(){
-		unsigned key = CalKey();		
+		unsigned key = CalKey();
 		if (!exist[key])
 			return false;
 		for (int i = 0; i < PathC.size(); i++){
@@ -696,11 +692,11 @@ double Overlap(int p){		//­pºâFFÀY§À­«Å|²v => ¨ú³Ì¤j­È=> ¦p¦ó¤ñ¸û¶È¦³ÀY/§Àªº? =>
 	GATE* edptr = pptr->Gate(pptr->length() - 1);
 	for (int i = 0; i < PathC.size(); i++){
 		if (!PathC[i]->Is_Chosen() || !PathC[i]->CheckAttack())
-			continue;		
+			continue;
 		PATH* iptr = PathC[i];
 		double score, s1, s2;
 		if (stptr->GetType() != "PI"){
-			GATE* gptr = iptr->Gate(iptr->length() - 1);			
+			GATE* gptr = iptr->Gate(iptr->length() - 1);
 			int c = 0;
 			while (c < stptr->ClockLength() && c < gptr->ClockLength()){
 				if (stptr->GetClockPath(c) != gptr->GetClockPath(c))
@@ -714,7 +710,7 @@ double Overlap(int p){		//­pºâFFÀY§À­«Å|²v => ¨ú³Ì¤j­È=> ¦p¦ó¤ñ¸û¶È¦³ÀY/§Àªº? =>
 		}
 
 		if (edptr->GetType() != "PO"){
-			GATE* gptr = iptr->Gate(0);			
+			GATE* gptr = iptr->Gate(0);
 			int c = 0;
 			while (c < edptr->ClockLength() && c < gptr->ClockLength()){
 				if (edptr->GetClockPath(c) != gptr->GetClockPath(c))
@@ -726,14 +722,14 @@ double Overlap(int p){		//­pºâFFÀY§À­«Å|²v => ¨ú³Ì¤j­È=> ¦p¦ó¤ñ¸û¶È¦³ÀY/§Àªº? =>
 		else{
 			s2 = 1;		//¦¹ª¬ªp¤U§ÀºÝ­«Å|«×³]1,¥²¸û®t
 		}
-		
+
 		if (s1>s2)
 			score = s1 * 2 + s2;
 		else
 			score = s2 * 2 + s1;
-		
+
 		//score = s1 + s2;
-		
+
 		if (max < score)
 			max = score;
 	}
@@ -754,19 +750,19 @@ double AtkPointRate(PATH* pptr){		//­pºâ¦Û¨­ªº­«Å|²v
 	return (double)c * 2 / (double)(stptr->ClockLength() + edptr->ClockLength());
 }
 
-bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Ètrueªí¥Ü¬°domination set
-															
+bool ChooseVertexWithGreedyMDS(double year, bool puthash){	//§äshortlist, ¦^¶Ç­Ètrueªí¥Ü¬°domination set
+
 	static HASHTABLE hashp(16, PathC.size());				//puthashªí¥Ü±N¤W¦¸¿ïªºÂI¥[¤Jhash(¦ý¤£¿ïÂI)
-	if (puthash){		
+	if (puthash){
 		hashp.PutNowStatus();
 		return true;
 	}
-
+	
 	int No_node = PathC.size();
 	int *degree = new int[No_node], *color = new int[No_node];
 	int cc = 0;
 	for (int i = 0; i < No_node; i++){
-		PathC[i]->SetChoose(false);						
+		PathC[i]->SetChoose(false);
 		degree[i] = 0;
 		if (!PathC[i]->CheckAttack()){
 			color[i] = -1;
@@ -777,8 +773,8 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 			if (Check_Connect(i, j, year) && i != j && PathC[j]->CheckAttack())
 				degree[i]++;
 		}
-	}	
-	
+	}
+
 	int mini, w_point;
 	vector<PN_W> cand;
 	while (true){
@@ -792,7 +788,7 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 			return true;
 		}
 		cand.clear();
-		
+
 		for (int i = 0; i < No_node; i++){
 			if (color[i] == -1)				//¶Âªº¤£¿ï
 				continue;
@@ -805,15 +801,15 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 				continue;
 			}
 
-			PathC[i]->SetChoose(false);			
+			PathC[i]->SetChoose(false);
 
 			double w = 0;
 			//w -= EstimateAddTimes(year, i);	//¥[¤JiÂI«á¼W¥[ªº¸Ñ®t­È	
 			//w -= EstimatePSD(i);				//¥[¤JiÂI«á¼W¥[ªº"Ãþ¼Ð·Ç®t" (¦¹¨â¶µ¤w§R°£)
-			
+
 			w += (double)degree[i] / (double)w_point;	//¥[¤JiÂI«á¥i´î¤Öªº¥ÕÂI¤§¤ñ
-			w -= 1*Overlap(i);							//¥[¤JÂI©M¨ä¥¦ÂIªº­«Å|²v
-			w -= 2*AtkPointRate(PathC[i]);				//¦Û¨­ªº­«Å|²v
+			w -= 1 * Overlap(i);							//¥[¤JÂI©M¨ä¥¦ÂIªº­«Å|²v
+			w -= 2 * AtkPointRate(PathC[i]);				//¦Û¨­ªº­«Å|²v
 			cand.push_back(PN_W(i, w));
 		}
 		if (cand.size() == 0){
@@ -822,8 +818,8 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 			return false;
 		}
 
-		sort(cand.begin(), cand.end(), PN_W_comp);	
-		
+		sort(cand.begin(), cand.end(), PN_W_comp);
+
 		if (cc == 0){	//²Ä¤@­ÓÂI®g­¸Ãð
 			int s = 0;
 			for (int i = 0; i < cand.size(); i++){
@@ -834,7 +830,7 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 				target = rand() % s;		//¥u¦³¤@­ÓÂI®É·|¥X²{ s = 0
 			else
 				target = 0;
-			
+
 			s = 0;
 			for (int i = 0; i < cand.size(); i++){
 				s += degree[cand[i].pn];
@@ -844,7 +840,7 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 				}
 			}
 		}
-		else{			
+		else{
 			int ed = 0;											//§ädegree³Ì¤jªÌ,¦pªG¬Û¦P´NÀH¾÷
 			while (ed < cand.size()){
 				if (absl(cand[ed].w - cand[0].w) < 0.5)
@@ -854,18 +850,18 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 			}
 			mini = cand[rand() % ed].pn;
 		}
-		for (int i = 0; i < No_node; i++){			
+		for (int i = 0; i < No_node; i++){
 			if (mini == i || color[i] == -1)	continue;
 
 			if (Check_Connect(mini, i, year) && color[i] == 1){
 				for (int j = 0; j < No_node; j++){
 					if (i == j)	continue;
-					if (Check_Connect(j,i,year) && color[j] != -1)	//¥Õ->¦Ç,ªþªñªºÂI¤§degree -1 (¶ÂÂI¤w³]¬°degree = 0 ¸õ¹L)
+					if (Check_Connect(j, i, year) && color[j] != -1)	//¥Õ->¦Ç,ªþªñªºÂI¤§degree -1 (¶ÂÂI¤w³]¬°degree = 0 ¸õ¹L)
 						degree[j]--;
 				}
 				color[i] = 0;	//³Q¿ïÂIªº¹j¾À§ï¬°¦Ç				
 			}
-			if (Check_Connect(i,mini,year) && color[mini] == 1){
+			if (Check_Connect(i, mini, year) && color[mini] == 1){
 				degree[i] --;
 			}
 		}
@@ -874,7 +870,7 @@ bool ChooseVertexWithGreedyMDS(double year,bool puthash){	//§äshortlist, ¦^¶Ç­Èt
 		color[mini] = -1;	//³Q¿ïÂI§ï¬°¶Â
 		cc++;
 		cout << PathC[mini]->No() << ' ';
-	}	
+	}
 }
 
 map<GATE*, int> cbuffer_code;
@@ -891,12 +887,12 @@ int HashAllClockBuffer(){
 		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		if (stptr->GetType() != "PI"){
 			for (int j = 0; j < stptr->ClockLength(); j++)
-				if (cbuffer_code.find(stptr->GetClockPath(j)) == cbuffer_code.end()){
-					cbuffer_code[stptr->GetClockPath(j)] = k;
-					cbuffer_decode[k] = stptr->GetClockPath(j);
-					k++;
+			if (cbuffer_code.find(stptr->GetClockPath(j)) == cbuffer_code.end()){
+				cbuffer_code[stptr->GetClockPath(j)] = k;
+				cbuffer_decode[k] = stptr->GetClockPath(j);
+				k++;
 			}
-		}		
+		}
 		if (edptr->GetType() != "PO"){
 			for (int j = 0; j < edptr->ClockLength(); j++)
 			if (cbuffer_code.find(edptr->GetClockPath(j)) == cbuffer_code.end()){
@@ -910,58 +906,59 @@ int HashAllClockBuffer(){
 }
 
 
-void CheckPathAttackbility(double year,double margin,bool flag,double PLUS){		//¹LÂo, ±NÂI¤ÀÃþ °Ñ¦Ò¤U­±ªºSAT³¡¥÷
-		period = 0.0;		
-		for (int i = 0; i < PathR.size(); i++){
-			PATH* pptr = &PathR[i];
-			GATE* edptr = pptr->Gate(pptr->length() - 1);
-			GATE* stptr = pptr->Gate(0);
-			double clkt = pptr->GetCTE(), clks = pptr->GetCTH(), Tcq = pptr->Out_time(0) - pptr->In_time(0);
-			for (int i = 0; i < edptr->ClockLength(); i++)
-				clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year + PLUS);
-			for (int i = 0; i < stptr->ClockLength(); i++)
-				clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year + PLUS);
-			if (stptr->GetType() != "PI")
-				Tcq *= (1.0 + AgingRate(FF, static_cast<double>(year + PLUS)));
-			double pp = (1 + AgingRate(WORST, static_cast<double>(year + PLUS)))*(pptr->In_time(pptr->length() - 1) - pptr->Out_time(0)) + Tcq + (clks - clkt) + pptr->GetST();
-			pp *= margin;
-			if (pp>period){
-				period = pp;				
-			}
+void CheckPathAttackbility(double year, double margin, bool flag, double PLUS){		//¹LÂo, ±NÂI¤ÀÃþ °Ñ¦Ò¤U­±ªºSAT³¡¥÷
+	PathC.clear();
+	period = 0.0;
+	for (int i = 0; i < PathR.size(); i++){
+		PATH* pptr = &PathR[i];
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
+		GATE* stptr = pptr->Gate(0);
+		double clkt = pptr->GetCTE(), clks = pptr->GetCTH(), Tcq = pptr->Out_time(0) - pptr->In_time(0);
+		for (int i = 0; i < edptr->ClockLength(); i++)
+			clkt += (edptr->GetClockPath(i)->GetOutTime() - edptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year + PLUS);
+		for (int i = 0; i < stptr->ClockLength(); i++)
+			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year + PLUS);
+		if (stptr->GetType() != "PI")
+			Tcq *= (1.0 + AgingRate(FF, static_cast<double>(year + PLUS)));
+		double pp = (1 + AgingRate(WORST, static_cast<double>(year + PLUS)))*(pptr->GetPathDelay()) + Tcq + (clks - clkt) + pptr->GetST();
+		pp *= margin;
+		if (pp>period){
+			period = pp;
 		}
-		if (flag){
-			cout << "Clock Period = " << period << endl;			
-			info[0] = period;
-		}
-	for (int i = 0; i < PathR.size(); i++){				
+	}
+	if (flag){
+		cout << "Clock Period = " << period << endl;
+		info[0] = period;
+	}
+	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		pptr->SetAttack(false);
 		pptr->SetSafe(true);
 		GATE* stptr = pptr->Gate(0);
-		GATE* edptr = pptr->Gate(pptr->length() - 1);		
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		int lst = stptr->ClockLength();
 		int led = edptr->ClockLength();
-		int branch = 1;		
-		if (stptr->GetType() == "PI"){			
+		int branch = 1;
+		if (stptr->GetType() == "PI"){
 			for (int j = 1; j < led; j++){
 				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year + ERROR)){
-						pptr->SetSafe(false);						
+						pptr->SetSafe(false);
 						if (Vio_Check(pptr, 0, j, DCC_NONE, (AGINGTYPE)x, year - ERROR))
 							pptr->SetAttack(true);
 					}
-				}				
-			}		
+				}
+			}
 		}
 		else if (edptr->GetType() == "PO"){
 			for (int j = 1; j < lst; j++){
 				for (int x = 1; x <= 3; x++){
 					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year + ERROR))
 						pptr->SetSafe(false);
-					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year+ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR))										
-						pptr->SetAttack(true);	
-				}				
-			}	
+					if (!Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year + ERROR) && Vio_Check(pptr, j, 0, (AGINGTYPE)x, DCC_NONE, year - ERROR))
+						pptr->SetAttack(true);
+				}
+			}
 		}
 		else{
 			while (branch < lst&&branch < led){
@@ -1006,7 +1003,7 @@ void CheckPathAttackbility(double year,double margin,bool flag,double PLUS){		//
 			PathC.push_back(pptr);
 			if (!pptr->CheckAttack())
 				dd++;
-		}		
+		}
 	}
 	if (flag){
 		for (int i = 0; i < PathC.size(); i++){
@@ -1032,9 +1029,9 @@ bool CheckNoVio(double year){
 	return true;
 }
 
-void GenerateSAT(string filename,double year){		
+void GenerateSAT(string filename, double year){
 	fstream file;
-	fstream temp;	
+	fstream temp;
 	file.open(filename.c_str(), ios::out);
 	map<GATE*, bool> exclusive;
 	HashAllClockBuffer();	//¨C­Óclockbuffer¤§½s¸¹¬°¦bcbuffer_code¤º¹ïÀ³ªº¸¹½X*2+1,*2+2
@@ -1045,7 +1042,7 @@ void GenerateSAT(string filename,double year){
 		PATH* pptr = &PathR[i];
 		if (pptr->IsSafe())	continue;
 		GATE* stptr = pptr->Gate(0);
-		GATE* edptr = pptr->Gate(pptr->length()-1);
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		int stn = 0, edn = 0;	//©ñ¸mÂI(¤§«á¡A¥]¬A¦Û¨­³£·|¨ü¼vÅT)
 		int lst = stptr->ClockLength();
 		int led = edptr->ClockLength();
@@ -1171,7 +1168,7 @@ void GenerateSAT(string filename,double year){
 					}
 				}
 			}
-		}		
+		}
 		else{
 			if (stptr->GetType() == "PI"){
 				for (edn = 0; edn < led; edn++){
@@ -1233,7 +1230,7 @@ void GenerateSAT(string filename,double year){
 								file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 							}
 							file << 0 << endl;
-						}
+						}						
 					}
 					stn++;
 					edn++;
@@ -1265,7 +1262,7 @@ void GenerateSAT(string filename,double year){
 										file << cbuffer_code[edptr->GetClockPath(j)] * 2 + 1 << ' ' << cbuffer_code[edptr->GetClockPath(j)] * 2 + 2 << ' ';
 									}
 									file << 0 << endl;
-								}
+								}								
 							}
 						}
 					}
@@ -1290,18 +1287,18 @@ int CallSatAndReadReport(int flag){
 		system("./minisat best.cnf temp.sat");
 	else
 		system("./minisat sat.cnf temp.sat");
-	
+
 	fstream file;
 	file.open("temp.sat", ios::in);
 	string line;
 	getline(file, line);
-	if (line.find("UNSAT")!=string::npos)
+	if (line.find("UNSAT") != string::npos)
 		return 0;
-	int n1,n2;
+	int n1, n2;
 	while (file >> n1 >> n2){
-	
+
 		if (n1 < 0 && n2 < 0)
-			cbuffer_decode[(-n1 - 1) / 2]->SetDcc(DCC_NONE);		
+			cbuffer_decode[(-n1 - 1) / 2]->SetDcc(DCC_NONE);
 		else if (n1>0 && n2 < 0)
 			cbuffer_decode[(n1 - 1) / 2]->SetDcc(DCC_S);
 		else if (n1<0 && n2>0)
@@ -1311,9 +1308,9 @@ int CallSatAndReadReport(int flag){
 	}
 	file.close();
 	int cdcc = 0;
-	for (int i = 0; i < cbuffer_decode.size();i++)
-		if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
-			cout << ++cdcc << " : " << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
+	for (int i = 0; i < cbuffer_decode.size(); i++)
+	if (cbuffer_decode[i]->GetDcc() != DCC_NONE)
+		cout << ++cdcc << " : " << cbuffer_decode[i]->GetName() << ' ' << cbuffer_decode[i]->GetDcc() << endl;
 	return cdcc;
 }
 
@@ -1324,9 +1321,9 @@ void CheckOriLifeTime(){							//¦³¥i¯à¨M©wTcªºpath¤£¦bcandidate¤¤(mine¸Ì)
 		if (!PathC[i]->CheckAttack())
 			continue;
 		double e_upper = 10000, e_lower = 10000;
-		for (int j = 0; j < PathC.size(); j++){			
+		for (int j = 0; j < PathC.size(); j++){
 			if (EdgeA[i][j]>9999)
-				continue;			
+				continue;
 			double st = 1.0, ed = 50.0, mid;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
@@ -1364,19 +1361,19 @@ void CheckOriLifeTime(){							//¦³¥i¯à¨M©wTcªºpath¤£¦bcandidate¤¤(mine¸Ì)
 					ed = mid;
 			}
 			if (mid < e_lower)
-				e_lower = mid;					
+				e_lower = mid;
 		}
 		if (up > e_upper)
 			up = e_upper;
 		if (low < e_lower)
 			low = e_lower;
-		
+
 	}
 	cout << up << ' ' << low << endl;
 }
 
 
-double CalQuality(double year,double &up,double &low){		//¦pªG¥Ñmine¨M©wTc «ç»ò°µ? => ¥Ø«e¬°±qcandidate±À¨ìcandidate+mine
+double CalQuality(double year, double &up, double &low){		//¦pªG¥Ñmine¨M©wTc «ç»ò°µ? => ¥Ø«e¬°±qcandidate±À¨ìcandidate+mine
 	cout << "Start CalQuality" << endl;
 	up = 10.0, low = 0.0;
 	for (int i = 0; i < PathC.size(); i++){
@@ -1386,14 +1383,14 @@ double CalQuality(double year,double &up,double &low){		//¦pªG¥Ñmine¨M©wTc «ç»ò°
 		for (int j = 0; j < PathC.size(); j++){
 			//­pºâ®É±q¥þ³¡¥i§ðÀ»ÂI(¤£¬O¶Èºâ³Q¿ïÂI)
 			if (EdgeA[i][j]>9999)
-				continue;			
-			double st = 1.0, ed = 10.0, mid;		
+				continue;
+			double st = 1.0, ed = 10.0, mid;
 			while (ed - st > 0.0001){				//¥Îbinary search, ¨C¦¸³£±qa¥h±Àbªº¦Ñ¤Æ
 				mid = (st + ed) / 2;
-				double upper,lower;
-				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j,mid);				//y = ax+b => ¤À¦¨lower bound/upper bound¥h¨D³Ì»·¯à®t¦h¤Ö				
-				double Aging_P;														
-				if (upper > AgingRate(WORST, mid))													
+				double upper, lower;
+				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, mid);				//y = ax+b => ¤À¦¨lower bound/upper bound¥h¨D³Ì»·¯à®t¦h¤Ö				
+				double Aging_P;
+				if (upper > AgingRate(WORST, mid))
 					Aging_P = AgingRate(WORST, mid);
 				else
 					Aging_P = upper;
@@ -1409,8 +1406,8 @@ double CalQuality(double year,double &up,double &low){		//¦pªG¥Ñmine¨M©wTc «ç»ò°
 				mid = (st + ed) / 2;
 				double upper, lower;
 				CalPreInv(AgingRate(WORST, mid), upper, lower, i, j, mid);
-				double Aging_P;														
-				if (lower > AgingRate(WORST, mid))								
+				double Aging_P;
+				if (lower > AgingRate(WORST, mid))
 					Aging_P = AgingRate(WORST, mid);
 				else
 					Aging_P = lower;
@@ -1420,12 +1417,12 @@ double CalQuality(double year,double &up,double &low){		//¦pªG¥Ñmine¨M©wTc «ç»ò°
 					ed = mid;
 			}
 			if (mid < e_lower)
-				e_lower = mid;		
-		}		
-		if (up > e_upper)		
+				e_lower = mid;
+		}
+		if (up > e_upper)
 			up = e_upper;
 		if (low < e_lower)
-			low = e_lower;	
+			low = e_lower;
 	}
 	return 0.0;
 }
@@ -1436,9 +1433,9 @@ double Monte_CalQuality(double year, double &up, double &low){
 	vector<double> monte;
 	monte.clear();
 	int TryT = 3000 / PathC.size();
-	if (TryT < 30)
-		TryT = 30;
-	for (int i = 0; i < PathC.size(); i++){
+	if (TryT < 1000)
+		TryT = 1000;
+	for (int i = 0; i < PathC.size(); i++){		//¨C¤@­Ópath³£¥Xµo{TryT}¦¸ => ±À¨ì©Ò¦³ªºpath±olifetime {TryT}¦¸ 
 		if (!PathC[i]->CheckAttack())
 			continue;
 		for (int tt = 0; tt < TryT; tt++){
@@ -1452,7 +1449,7 @@ double Monte_CalQuality(double year, double &up, double &low){
 				double V = rand() / (double)RAND_MAX;
 				double Z = sqrt(-2 * log(U))*cos(2 * 3.14159265354*V);
 				while (ed - st > 0.0001){
-					mid = (st + ed) / 2;					
+					mid = (st + ed) / 2;
 					double Aging_mean = CalPreAging(AgingRate(WORST, mid), i, j, mid);
 					double Aging_P = Z*(ser[i][j] * (1 + AgingRate(WORST, mid)) / (1 + AgingRate(WORST, 10))) + Aging_mean;
 					if (Aging_P > AgingRate(WORST, mid))
@@ -1471,29 +1468,62 @@ double Monte_CalQuality(double year, double &up, double &low){
 	}
 	sort(monte.begin(), monte.end());
 	int front = 0, back = monte.size() - 1;
-	up = monte[front], low = monte[back];	
-	while (front + monte.size() - 1 - back <= monte.size()/20){
+	up = monte[front], low = monte[back];
+	while (front + monte.size() - 1 - back <= monte.size() / 20){
 		if (absff(monte[front] - (double)year)>absff(monte[back] - (double)year))
 			up = monte[++front];
 		else
-			low = monte[--back];		
+			low = monte[--back];
 	}
 	return 0.0;
+}
+
+double Monte_CalQualityS(double year){
+	double up = 10.0, low = 0.0;
+	int i;
+	do{
+		i = rand() % PathC.size();
+	} while (i >= PathC.size() || !PathC[i]->CheckAttack());
+	double lt = 10000;		//lifetime
+	for (int j = 0; j < PathC.size(); j++){
+		//­pºâ®É±q¥þ³¡¥i§ðÀ»ÂI(¤£¬O¶Èºâ³Q¿ïÂI)
+		if (EdgeA[i][j]>9999)
+			continue;
+		double st = 1.0, ed = 10.0, mid;
+		double U = rand() / (double)RAND_MAX;
+		double V = rand() / (double)RAND_MAX;
+		double Z = sqrt(-2 * log(U))*cos(2 * 3.14159265354*V);
+		while (ed - st > 0.0001){
+			mid = (st + ed) / 2;
+			double Aging_mean = CalPreAging(AgingRate(WORST, mid), i, j, mid);
+			double Aging_P = Z*(ser[i][j] * (1 + AgingRate(WORST, mid)) / (1 + AgingRate(WORST, 10))) + Aging_mean;
+			if (Aging_P > AgingRate(WORST, mid))
+				Aging_P = AgingRate(WORST, mid);
+			if (Vio_Check(PathC[j], mid, Aging_P))
+				st = mid;
+			else
+				ed = mid;
+		}
+		if (mid < lt)
+			lt = mid;
+	}
+	//cout << i*tt << " : " << lt << endl;
+	return lt;	
 }
 
 bool CheckImpact(PATH* pptr){
 	GATE* gptr;
 	gptr = pptr->Gate(0);
 	if (gptr->GetType() != "PI"){
-		for (int i = 0; i < gptr->ClockLength();i++)
-			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
-				return true;
+		for (int i = 0; i < gptr->ClockLength(); i++)
+		if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+			return true;
 	}
 	gptr = pptr->Gate(pptr->length() - 1);
 	if (gptr->GetType() != "PO"){
 		for (int i = 0; i < gptr->ClockLength(); i++)
-			if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
-				return true;
+		if (gptr->GetClockPath(i)->GetDcc() != DCC_NONE)
+			return true;
 	}
 	return false;
 }
@@ -1511,7 +1541,7 @@ void RemoveRDCCs(){		//¸ÕµÛ²¾±¼DCC
 				must[stptr->GetClockPath(j)] = true;
 		}
 		for (int j = 0; j < edptr->ClockLength(); j++){
-			if (edptr->GetClockPath(j)->GetDcc()!=DCC_NONE)
+			if (edptr->GetClockPath(j)->GetDcc() != DCC_NONE)
 				must[edptr->GetClockPath(j)] = true;
 		}
 	}
@@ -1549,20 +1579,20 @@ void RemoveRDCCs(){		//¸ÕµÛ²¾±¼DCC
 	}
 	file.close();
 }
-int RefineResult(double year){	
+int RefineResult(double year){
 	int catk = 0, cimp = 0;
 	for (int i = 0; i < PathR.size(); i++){
 		PATH* pptr = &PathR[i];
 		GATE* stptr = pptr->Gate(0);
-		GATE* edptr = pptr->Gate(pptr->length() - 1);		
+		GATE* edptr = pptr->Gate(pptr->length() - 1);
 		if (CheckImpact(pptr))	//¦³DCC©ñ¦bclock path¤W
-			cimp++;		
+			cimp++;
 		if (!Vio_Check(pptr, (double)year + ERROR, AgingRate(WORST, year + ERROR))){		//lifetime­°¨ì´Á­­¤º
-			catk++;			
+			catk++;
 		}
 		if (!Vio_Check(pptr, (double)year - ERROR, AgingRate(WORST, year - ERROR))){
 			if (pptr->CheckAttack())
-				cout << "*";	
+				cout << "*";
 			double st = 1.0, ed = 10, mid;
 			while (ed - st>0.0001){
 				mid = (st + ed) / 2;
@@ -1571,12 +1601,12 @@ int RefineResult(double year){
 				else
 					ed = mid;
 			}
-			cout << i << " = " << mid << ' ';			
+			cout << i << " = " << mid << ' ';
 		}
 	}
 	cout << endl << catk << " Paths Be Attacked." << endl;
 	cout << cimp << " Paths Be Impacted." << endl;
-	
+
 	double maxe = 0;
 	int maxep = -1;
 	for (int i = 0; i < PathC.size(); i++){			//§ä"±q­þ­ÓiÂI±À¥X¥hªº½d³ò³ÌÄê",±Ni¥[¤J
@@ -1604,7 +1634,7 @@ int RefineResult(double year){
 					ed = mid;
 			}
 			if (mid < e_upper)
-				e_upper = mid;			
+				e_upper = mid;
 			st = 1.0, ed = 10.0;
 			while (ed - st > 0.0001){
 				mid = (st + ed) / 2;
@@ -1640,7 +1670,7 @@ int RefineResult(double year){
 }
 
 bool AnotherSol(){
-	
+
 	fstream file;
 	fstream solution;
 	file.open("sat.cnf", ios::out | ios::app);
@@ -1655,7 +1685,7 @@ bool AnotherSol(){
 		return false;
 	int dccno;
 	while (solution >> dccno){
-	file << -dccno << ' ';
+		file << -dccno << ' ';
 	}
 	file << endl;
 	file.close();
@@ -1676,15 +1706,15 @@ void PrintStatus(double year){
 			}
 			cout << endl;
 		}
-		else if (command.find("victim") !=string::npos){
+		else if (command.find("victim") != string::npos){
 			for (int i = 0; i < PathC.size(); i++){
-				if (!Vio_Check(PathC[i],year+ERROR,AgingRate(WORST,year+ERROR)))
+				if (!Vio_Check(PathC[i], year + ERROR, AgingRate(WORST, year + ERROR)))
 					cout << PathC[i]->No() << ' ';
 			}
 			cout << endl;
 		}
-		else if (command.find("cc")!=string::npos){
-			unsigned a,ac;
+		else if (command.find("cc") != string::npos){
+			unsigned a, ac;
 			a = atoi(command.c_str() + 3);
 			cout << a << endl;
 			for (int i = 0; i < PathC.size(); i++){
@@ -1724,18 +1754,18 @@ void PrintStatus(double year){
 			cout << PathC[ac]->Gate(0)->GetName() << " -> " << PathC[ac]->Gate(PathC[ac]->length() - 1)->GetName() << endl;
 			double upper, lower;
 			for (int i = 0; i < PathC.size(); i++){
-				if (Vio_Check(PathC[i], year+ERROR, AgingRate(WORST, year+ERROR)))	//¥uprint¦³¾÷·|§ðÀ»¦¨¥\ªº
+				if (Vio_Check(PathC[i], year + ERROR, AgingRate(WORST, year + ERROR)))	//¥uprint¦³¾÷·|§ðÀ»¦¨¥\ªº
 					continue;
 				if (EdgeA[ac][i] >9999)
 					cout << "INF" << endl;
 				else{
 					cout << "Ag" << PathC[i]->No() << " = " << EdgeA[ac][i] << "Ag" << a << " + " << EdgeB[ac][i] << " +- " << ser[ac][i] * dis* (AgingRate(WORST, year) / AgingRate(WORST, 10)) << endl;
 					CalPreInv(AgingRate(WORST, year), upper, lower, ac, i, year);
-					cout << AgingRate(WORST, year)*100 << "% -> " << lower * 100 << "% ~ " << upper * 100 << '%' << endl;
+					cout << AgingRate(WORST, year) * 100 << "% -> " << lower * 100 << "% ~ " << upper * 100 << '%' << endl;
 					double st = 1.0, ed = 10.0, mid;
 					while (ed - st > 0.0001){
 						mid = (st + ed) / 2;
-						CalPreInv(AgingRate(WORST, mid), upper, lower, ac, i, mid);						
+						CalPreInv(AgingRate(WORST, mid), upper, lower, ac, i, mid);
 						if (Vio_Check(PathC[i], mid, upper))
 							st = mid;
 						else
@@ -1745,7 +1775,7 @@ void PrintStatus(double year){
 					st = 1.0, ed = 10.0;
 					while (ed - st > 0.0001){
 						mid = (st + ed) / 2;
-						CalPreInv(AgingRate(WORST, mid), upper,lower, ac, i, mid);						
+						CalPreInv(AgingRate(WORST, mid), upper, lower, ac, i, mid);
 						if (Vio_Check(PathC[i], mid, lower))
 							st = mid;
 						else
@@ -1757,10 +1787,10 @@ void PrintStatus(double year){
 		}
 		else if (command.find("count edge") != string::npos){
 			int count = 0;
-			for (int i = 0; i < PathC.size();i++)
-				for (int j = 0; j < PathC.size();j++)
-					if (Check_Connect(i, j, year) && i != j)
-						count++;
+			for (int i = 0; i < PathC.size(); i++)
+			for (int j = 0; j < PathC.size(); j++)
+			if (Check_Connect(i, j, year) && i != j)
+				count++;
 			cout << "Edge : " << count << endl;
 		}
 		else if (command.find("count group") != string::npos){
@@ -1775,11 +1805,11 @@ void PrintStatus(double year){
 				gsize.push_back(1);
 				used[i] = true;
 				for (int j = 0; j < PathC.size(); j++){
-					if (Check_Connect(i, j, year) && i!=j && !used[j]){
+					if (Check_Connect(i, j, year) && i != j && !used[j]){
 						used[j] = true;
 						gsize[gsize.size() - 1]++;
 					}
-				}				
+				}
 			}
 			cout << "GROUP : " << gsize.size() << endl;
 			for (int i = 0; i < gsize.size(); i++){
@@ -1814,14 +1844,14 @@ void PrintStatus(double year){
 					op << pptr->Gate(pptr->length() - 1)->GetClockPath(j)->GetName() << "=>";
 				}
 				op << endl << endl;
-			}			
+			}
 			op.close();
 			cout << "candidate data is saved in file : " << fname << endl;
 		}
 		else if (command.find("mine") != string::npos){
 			for (int i = 0; i < PathR.size(); i++){
 				if (!PathR[i].IsSafe() && !PathR[i].CheckAttack()){
-					cout << PathR[i].No()<< ' ';
+					cout << PathR[i].No() << ' ';
 					if (PathR[i].Gate(0)->GetType() == "PI")
 						cout << "PI -> ";
 					else
@@ -1831,8 +1861,20 @@ void PrintStatus(double year){
 					else
 						cout << "FF" << endl;
 				}
-			}						
+			}
 		}
 		getline(cin, command);
+	}
+}
+
+void AdjustProcessVar(){
+	for (int i = 0; i < PathR.size(); i++){
+		for (int j = 1; j < PathR[i].length() - 1; j++){
+			double U = rand() / (double)RAND_MAX;
+			double V = rand() / (double)RAND_MAX;
+			double Z = sqrt(-2 * log(U))*cos(2 * 3.14159265354*V);
+			double v = Z*(0.05 / 1.96) + 1;
+			PathR[i].SetProVar(j, v);
+		}
 	}
 }
