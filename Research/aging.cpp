@@ -63,10 +63,10 @@ double AgingRate(AGINGTYPE status, double year){
 		if (year - (double)y > 0.00001)
 			return (Rate[y + 1][2] - Rate[y][2]) *(year - (double)y) + Rate[y][2];
 		return Rate[y][2];
-	case DCC_S:
-		return Rate[y][0];
+	case DCC_S:		
 		if (year - (double)y > 0.00001)
 			return (Rate[y + 1][0] - Rate[y][0]) *(year - (double)y) + Rate[y][0];
+		return Rate[y][0];
 	case FF:
 		return 0.02*year;
 	case WORST:

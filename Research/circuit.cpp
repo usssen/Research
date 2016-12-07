@@ -272,116 +272,6 @@ void ReadPath_l(string filename){	//讀path report
 	}
 	file.close();
 }
-/*
-void ReadPath_s(string filename){
-fstream file;
-file.open(filename.c_str(), ios::in);
-string line, sp, ep;
-GATE *gptr = NULL, *spptr = NULL, *epptr = NULL;
-PATH* p = NULL;
-while (getline(file, line)){
-if (line.find("Startpoint") != string::npos){
-if (PathR.size() >= 2*MAXPATHS)
-return;
-p = new PATH();
-sp = line.substr(line.find("Startpoint") + 12);
-sp = sp.substr(0, sp.find(" "));
-spptr = Circuit[0].GetGate(sp);	//0為top-module
-if (spptr == NULL)	//起點為PI
-spptr = new GATE(sp, "PI");
-}
-else if (line.find("Endpoint") != string::npos){	//不會有output為PO(沒有holdtime問題)
-ep = line.substr(line.find("Endpoint") + 10);
-ep = ep.substr(0, sp.find(" "));
-epptr = Circuit[0].GetGate(ep);
-if (epptr == NULL)
-epptr = new GATE(ep, "PO");
-}
-if (line.find("---") == string::npos || sp == "")	continue;
-getline(file, line);
-getline(file, line);
-if (spptr->GetType() != "PI"){
-while (getline(file, line)){	//clock-source -> startpoint
-line = RemoveSpace(line);
-if (sp == line.substr(0, line.find("/")))	break;
-if (line.find("(net)") != string::npos)	continue;
-else if (line.find("(in)") != string::npos){	//clock source時間不計,如果有外部延遲後面分析再加入
-spptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
-}
-//else if (line.find("(out)") != string::npos){}
-else{
-string name = line.substr(0, line.find("/"));
-double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-getline(file, line);
-double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-gptr = Circuit[0].GetGate(name);
-spptr->SetClockPath(gptr);
-gptr->SetInTime(intime);
-gptr->SetOutTime(outtime);
-}
-}
-}
-if (spptr->GetType() == "PI"){		//起點為PI的狀況
-while (line.find("(in)") == string::npos)	getline(file, line);
-p->AddGate(spptr, 0, TransStringToDouble(line.substr(line.find("&") + 1)));
-getline(file, line);
-}
-do{
-line = RemoveSpace(line);
-if (ep == line.substr(0, line.find("/")) || line.find("(out)") != string::npos)	break;
-if (line.find("(net)") != string::npos)	continue;
-string name = line.substr(0, line.find("/"));
-double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-getline(file, line);
-double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-gptr = Circuit[0].GetGate(name);
-p->AddGate(gptr, intime, outtime);
-} while (getline(file, line));
-p->AddGate(epptr, TransStringToDouble(line.substr(line.find("&") + 1)), -1);	//arrival time
-if (epptr->GetType() == "PO"){	//short部份應不會有output為PO
-while (line.find("output external delay") == string::npos)	getline(file, line);
-double delay = TransStringToDouble(line.substr(line.find("-") + 1));
-p->SetCTE(0.0);
-p->SetHT(delay);
-}
-else{
-while (line.find("clock source latency") == string::npos) getline(file, line);
-while (getline(file, line)){
-line = RemoveSpace(line);
-if (ep == line.substr(0, line.find("/"))){
-double cte = TransStringToDouble(line.substr(line.find("&") + 1));
-p->SetCTE(cte);
-break;
-}
-if (line.find("(net)") != string::npos)	continue;
-else if (line.find("(in)") != string::npos){
-epptr->SetClockPath(Circuit[0].GetGate("ClockSource"));
-}
-else{
-string name = line.substr(0, line.find("/"));
-double intime = TransStringToDouble(line.substr(line.find("&") + 1));
-getline(file, line);
-double outtime = TransStringToDouble(line.substr(line.find("&") + 1));
-gptr = Circuit[0].GetGate(name);
-epptr->SetClockPath(gptr);
-gptr->SetInTime(intime);
-gptr->SetOutTime(outtime);
-}
-}
-while (line.find("hold") == string::npos)	getline(file, line);
-double hold = TransStringToDouble(line.substr(line.find("time") + 5));
-p->SetHT(hold);
-}
-spptr->Setflag();
-epptr->Setflag();
-p->SetType(SHORT);
-p->CalWeight();
-PathR.push_back(*p);
-sp = "";
-}
-file.close();
-}
-*/
 
 void ReadCpInfo(string filename){		//讀關聯性和迴歸線
 	fstream file;
@@ -449,8 +339,8 @@ bool Vio_Check(PATH* pptr, int stn, int edn, AGINGTYPE ast, AGINGTYPE aed, doubl
 		clks = pptr->GetCTH();	//老化後 = 原本 + 每個gate delay x 老化率 **這點要修正 wire也必需計算老化
 		double smallest = stptr->GetClockPath(1)->GetOutTime() - stptr->GetClockPath(1)->GetInTime();
 		for (int i = 2; i < stptr->ClockLength(); i++)
-		if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
-			smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
+			if (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime() < smallest)
+				smallest = stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime();
 		for (int i = 0; i < stn; i++)
 			clks += (stptr->GetClockPath(i)->GetOutTime() - stptr->GetClockPath(i)->GetInTime())*AgingRate(DCC_NONE, year);
 		for (int i = stn; i < stptr->ClockLength(); i++)
@@ -643,7 +533,7 @@ private:
 	bool** choose;
 	unsigned size;
 public:
-	HASHTABLE(unsigned s1, unsigned s2){	//s1是位元數
+	HASHTABLE(unsigned s1, unsigned s2){	//s1是hash table元素數(bit),s2是元素大小
 		size = s1;
 		exist = new bool[1 << s1];
 		choose = new bool*[1 << s1];
